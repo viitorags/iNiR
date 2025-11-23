@@ -1,0 +1,615 @@
+import qs
+import qs.services
+import qs.modules.common
+import qs.modules.common.functions
+import qs.modules.common.widgets
+import QtQuick
+import QtQuick.Layouts
+import QtQuick.Effects
+import Qt5Compat.GraphicalEffects
+import Quickshell
+import Quickshell.Wayland
+import Quickshell.Io
+import Quickshell.Widgets
+
+Scope {
+    id: root
+    property int panelWidth: 330
+    property string searchText: ""
+    // Animation and visibility control
+    property bool animationsEnabled: Config.options.altSwitcher ? (Config.options.altSwitcher.enableAnimation !== false) : true
+    property bool panelVisible: false
+    property real panelRightMargin: -panelWidth
+    // Snapshot actual de ventanas ordenadas que se usa mientras el panel está abierto
+    property var itemSnapshot: []
+
+    function toTitleCase(name) {
+        if (!name)
+            return ""
+        let s = name.replace(/[._-]+/g, " ")
+        const parts = s.split(/\s+/)
+        for (let i = 0; i < parts.length; i++) {
+            const p = parts[i]
+            if (!p)
+                continue
+            parts[i] = p.charAt(0).toUpperCase() + p.slice(1)
+        }
+        return parts.join(" ")
+    }
+
+    function buildItemsFrom(windows, workspaces, mruIds) {
+        if (!windows || !windows.length)
+            return []
+
+        const items = []
+        const itemsById = {}
+
+        for (let i = 0; i < windows.length; i++) {
+            const w = windows[i]
+            const appId = w.app_id || ""
+            let appName = appId
+            if (appName && appName.indexOf(".") !== -1) {
+                const parts = appName.split(".")
+                appName = parts[parts.length - 1]
+            }
+            if (!appName && w.title)
+                appName = w.title
+
+            appName = toTitleCase(appName)
+
+            const item = {
+                id: w.id,
+                appId: appId,
+                appName: appName,
+                title: w.title || "",
+                workspaceId: w.workspace_id
+            }
+            items.push(item)
+            itemsById[item.id] = item
+        }
+
+        items.sort(function (a, b) {
+            const wa = workspaces[a.workspaceId]
+            const wb = workspaces[b.workspaceId]
+            const ia = wa ? wa.idx : 0
+            const ib = wb ? wb.idx : 0
+            if (ia !== ib)
+                return ia - ib
+
+            const an = (a.appName || a.title || "").toString()
+            const bn = (b.appName || b.title || "").toString()
+            const cmp = an.localeCompare(bn)
+            if (cmp !== 0)
+                return cmp
+
+            return a.id - b.id
+        })
+
+        const cfg = Config.options.altSwitcher
+        const useMostRecentFirst = cfg && cfg.useMostRecentFirst !== false
+
+        if (useMostRecentFirst && mruIds && mruIds.length > 0) {
+            const ordered = []
+            const used = {}
+
+            for (let i = 0; i < mruIds.length; i++) {
+                const id = mruIds[i]
+                const it = itemsById[id]
+                if (it) {
+                    ordered.push(it)
+                    used[id] = true
+                }
+            }
+
+            for (let i = 0; i < items.length; i++) {
+                const it = items[i]
+                if (!used[it.id])
+                    ordered.push(it)
+            }
+
+            return ordered
+        }
+
+        return items
+    }
+
+    function rebuildSnapshot() {
+        const windows = NiriService.windows || []
+        const workspaces = NiriService.workspaces || {}
+        const mruIds = NiriService.mruWindowIds || []
+        itemSnapshot = buildItemsFrom(windows, workspaces, mruIds)
+    }
+
+    function ensureSnapshot() {
+        if (!itemSnapshot || itemSnapshot.length === 0)
+            rebuildSnapshot()
+    }
+
+    // Fullscreen scrim on all screens: same pattern as Overview, controlled by GlobalStates.altSwitcherOpen.
+    Variants {
+        id: altSwitcherScrimVariants
+        model: Quickshell.screens
+        PanelWindow {
+            id: scrimRoot
+            required property var modelData
+            screen: modelData
+            visible: GlobalStates.altSwitcherOpen
+            exclusionMode: ExclusionMode.Ignore
+            color: "transparent"
+            WlrLayershell.namespace: "quickshell:altSwitcherScrim"
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+
+            anchors {
+                top: true
+                bottom: true
+                left: true
+                right: true
+            }
+
+            Rectangle {
+                anchors.fill: parent
+                z: -1
+                color: {
+                    const cfg = Config.options.altSwitcher
+                    const v = (cfg && cfg.scrimDim !== undefined) ? cfg.scrimDim : 35
+                    const clamped = Math.max(0, Math.min(100, v))
+                    const a = clamped / 100
+                    return Qt.rgba(0, 0, 0, a)
+                }
+                visible: GlobalStates.altSwitcherOpen
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                onClicked: GlobalStates.altSwitcherOpen = false
+            }
+        }
+    }
+
+    PanelWindow {
+        id: window
+        visible: root.panelVisible
+        exclusionMode: ExclusionMode.Ignore
+        color: "transparent"
+        WlrLayershell.namespace: "quickshell:altSwitcher"
+        WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+
+        anchors {
+            top: true
+            bottom: true
+            left: true
+            right: true
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: function (mouse) {
+                const local = panel.mapFromItem(window, mouse.x, mouse.y)
+                if (local.x < 0 || local.x > panel.width || local.y < 0 || local.y > panel.height)
+                    GlobalStates.altSwitcherOpen = false
+            }
+        }
+
+        Keys.onPressed: function (event) {
+            if (!GlobalStates.altSwitcherOpen)
+                return
+            if (event.key === Qt.Key_Escape) {
+                GlobalStates.altSwitcherOpen = false
+                event.accepted = true
+            } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                root.activateCurrent()
+                event.accepted = true
+            } else if (event.key === Qt.Key_Down || event.key === Qt.Key_J) {
+                root.nextItem()
+                event.accepted = true
+            } else if (event.key === Qt.Key_Up || event.key === Qt.Key_K) {
+                root.previousItem()
+                event.accepted = true
+            }
+        }
+
+        Rectangle {
+            id: panel
+            width: root.panelWidth
+            radius: 0
+            topLeftRadius: Appearance.rounding.screenRounding
+            bottomLeftRadius: Appearance.rounding.screenRounding
+            topRightRadius: 0
+            bottomRightRadius: 0
+            color: "transparent"
+            border.width: 0
+
+            anchors {
+                right: parent.right
+                rightMargin: root.panelRightMargin
+                verticalCenter: parent.verticalCenter
+            }
+
+            implicitHeight: Math.min(contentColumn.implicitHeight + Appearance.sizes.hyprlandGapsOut * 2,
+                                      parent.height - Appearance.sizes.hyprlandGapsOut * 2)
+
+            Rectangle {
+                id: panelBackground
+                z: 0
+                anchors.fill: parent
+                radius: panel.radius
+                topLeftRadius: panel.topLeftRadius
+                bottomLeftRadius: panel.bottomLeftRadius
+                topRightRadius: panel.topRightRadius
+                bottomRightRadius: panel.bottomRightRadius
+                color: {
+                    const cfg = Config.options.altSwitcher
+                    const base = ColorUtils.mix(Appearance.colors.colLayer0, Qt.rgba(0, 0, 0, 1), 0.35)
+                    const opacity = cfg && cfg.backgroundOpacity !== undefined ? cfg.backgroundOpacity : 0.9
+                    return ColorUtils.applyAlpha(base, opacity)
+                }
+                border.width: 0
+            }
+
+            StyledRectangularShadow {
+                target: panelBackground
+            }
+
+            MultiEffect {
+                z: 0.5
+                anchors.fill: panelBackground
+                source: panelBackground
+                visible: Config.options.altSwitcher && Config.options.altSwitcher.enableBlurGlass && Config.options.altSwitcher.blurAmount !== undefined && Config.options.altSwitcher.blurAmount > 0
+                blurEnabled: true
+                blur: Config.options.altSwitcher && Config.options.altSwitcher.blurAmount !== undefined ? Config.options.altSwitcher.blurAmount : 0.4
+                blurMax: 64
+                saturation: 1.0
+            }
+
+            ColumnLayout {
+                id: contentColumn
+                z: 1
+                anchors.fill: parent
+                anchors.margins: Appearance.sizes.hyprlandGapsOut
+                spacing: Appearance.sizes.spacingSmall
+
+                ListView {
+                    id: listView
+                    Layout.fillWidth: true
+                    Layout.fillHeight: false
+                    Layout.minimumHeight: 0
+                    clip: true
+                    spacing: Appearance.sizes.spacingSmall
+                    property int rowHeight: (count <= 6
+                                              ? 60
+                                              : (count <= 10 ? 52 : 44))
+                    property int maxVisibleRows: 8
+                    implicitHeight: {
+                        const minRows = 3
+                        const rows = count > 0 ? count : 0
+                        const visibleRows = Math.min(rows, maxVisibleRows)
+                        const baseRows = visibleRows > 0 ? visibleRows : minRows
+                        const base = rowHeight * baseRows + spacing * Math.max(0, baseRows - 1)
+                        return base
+                    }
+                    model: ScriptModel {
+                        values: root.itemSnapshot
+                    }
+                    delegate: Item {
+                        id: row
+                        required property var modelData
+                        width: listView.width
+                        height: listView.rowHeight
+                        property bool selected: ListView.isCurrentItem
+
+                        // Base highlight for the currently cycled window
+                        Rectangle {
+                            id: highlightBase
+                            anchors.fill: parent
+                            radius: Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut
+                            visible: selected
+                            color: Appearance.colors.colLayer1
+                        }
+
+                        // Dark gradient towards the left edge inside the highlight
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: highlightBase.radius
+                            visible: selected
+                            color: "transparent"
+                            gradient: Gradient {
+                                GradientStop { position: 0.0; color: Qt.rgba(0, 0, 0, 0.35) }
+                                GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.0) }
+                            }
+                        }
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 10
+                            anchors.rightMargin: 10
+                            spacing: 8
+
+                            // Left dot indicator for the currently selected window
+                            Item {
+                                Layout.alignment: Qt.AlignVCenter
+                                width: 12
+                                height: 12
+
+                                Rectangle {
+                                    anchors.centerIn: parent
+                                    width: 8
+                                    height: 8
+                                    radius: width / 2
+                                    color: Appearance.colors.colOnLayer1
+                                    visible: selected
+                                }
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+
+                                StyledText {
+                                    text: modelData.appName || modelData.title || "Window"
+                                    color: Appearance.colors.colOnLayer1
+                                    font.pixelSize: Appearance.font.pixelSize.large
+                                    elide: Text.ElideRight
+                                }
+
+                                Item {
+                                    Layout.fillWidth: true
+                                    height: Appearance.font.pixelSize.small * 1.6
+
+                                    StyledText {
+                                        id: subtitleText
+                                        anchors.fill: parent
+                                        text: modelData.title
+                                        color: ColorUtils.transparentize(Appearance.colors.colOnLayer1, 0.6)
+                                        font.pixelSize: Appearance.font.pixelSize.small
+                                        elide: Text.ElideRight
+                                    }
+                                }
+                            }
+
+                            // App icon on the right, resolved via AppSearch like Overview
+                            Item {
+                                Layout.alignment: Qt.AlignVCenter
+                                width: listView.rowHeight * 0.6
+                                height: listView.rowHeight * 0.6
+
+                                IconImage {
+                                    id: altSwitcherIcon
+                                    anchors.fill: parent
+                                    source: Quickshell.iconPath(
+                                        AppSearch.guessIcon(modelData.appId || modelData.appName || modelData.title),
+                                        "image-missing"
+                                    )
+                                    implicitSize: parent.height
+                                }
+
+                                // Optional monochrome tint, same pattern as dock/workspaces
+                                Loader {
+                                    active: Config.options.altSwitcher && Config.options.altSwitcher.monochromeIcons
+                                    anchors.fill: altSwitcherIcon
+                                    sourceComponent: Item {
+                                        Desaturate {
+                                            id: desaturatedAltSwitcherIcon
+                                            visible: false // ColorOverlay handles final output
+                                            anchors.fill: parent
+                                            source: altSwitcherIcon
+                                            desaturation: 0.8
+                                        }
+                                        ColorOverlay {
+                                            anchors.fill: desaturatedAltSwitcherIcon
+                                            source: desaturatedAltSwitcherIcon
+                                            color: ColorUtils.transparentize(Appearance.colors.colPrimary, 0.9)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: function () {
+                                listView.currentIndex = index
+                                row.activate()
+                            }
+                        }
+
+                        function activate() {
+                            if (modelData && modelData.id !== undefined) {
+                                NiriService.focusWindow(modelData.id)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Timer {
+            id: autoHideTimer
+            interval: 500
+            repeat: false
+            onTriggered: GlobalStates.altSwitcherOpen = false
+        }
+
+        // Slide-in / slide-out animations driven by GlobalStates.altSwitcherOpen
+        Connections {
+            target: GlobalStates
+            function onAltSwitcherOpenChanged() {
+                if (GlobalStates.altSwitcherOpen)
+                    root.showPanel()
+                else
+                    root.hidePanel()
+            }
+        }
+
+        // Ajuste incremental del snapshot cuando cambian las ventanas de Niri mientras el panel está abierto
+        Connections {
+            target: NiriService
+            function onWindowsChanged() {
+                if (!root.panelVisible || !root.itemSnapshot || root.itemSnapshot.length === 0)
+                    return
+
+                const wins = NiriService.windows || []
+                if (!wins.length) {
+                    root.itemSnapshot = []
+                    listView.currentIndex = -1
+                    return
+                }
+
+                const alive = {}
+                for (let i = 0; i < wins.length; i++) {
+                    alive[wins[i].id] = true
+                }
+
+                const filtered = []
+                for (let i = 0; i < root.itemSnapshot.length; i++) {
+                    const it = root.itemSnapshot[i]
+                    if (alive[it.id])
+                        filtered.push(it)
+                }
+
+                root.itemSnapshot = filtered
+
+                const total = filtered.length
+                if (total === 0) {
+                    listView.currentIndex = -1
+                } else if (listView.currentIndex >= total) {
+                    listView.currentIndex = total - 1
+                }
+            }
+        }
+
+        NumberAnimation {
+            id: slideInAnim
+            target: root
+            property: "panelRightMargin"
+            easing.type: Easing.OutCubic
+        }
+
+        NumberAnimation {
+            id: slideOutAnim
+            target: root
+            property: "panelRightMargin"
+            easing.type: Easing.InCubic
+            onFinished: {
+                if (!GlobalStates.altSwitcherOpen) {
+                    root.panelVisible = false
+                }
+            }
+        }
+    }
+
+    function currentAnimDuration() {
+        const cfg = Config.options.altSwitcher
+        if (cfg && cfg.animationDurationMs !== undefined)
+            return cfg.animationDurationMs
+        return 200
+    }
+
+    function showPanel() {
+        rebuildSnapshot()
+        panelVisible = true
+        if (animationsEnabled) {
+            const dur = currentAnimDuration()
+            slideOutAnim.stop()
+            root.panelRightMargin = -panelWidth
+            slideInAnim.from = -panelWidth
+            slideInAnim.to = 0
+            slideInAnim.duration = dur
+            slideInAnim.restart()
+        } else {
+            panelRightMargin = 0
+        }
+    }
+
+    function hidePanel() {
+        if (!panelVisible)
+            return
+        if (animationsEnabled) {
+            const dur = currentAnimDuration()
+            slideInAnim.stop()
+            slideOutAnim.from = panelRightMargin
+            slideOutAnim.to = -panelWidth
+            slideOutAnim.duration = dur
+            slideOutAnim.restart()
+        } else {
+            panelRightMargin = -panelWidth
+            panelVisible = false
+        }
+    }
+
+    function hasItems() {
+        ensureSnapshot()
+        return itemSnapshot && itemSnapshot.length > 0
+    }
+
+    function ensureOpen() {
+        if (!GlobalStates.altSwitcherOpen) {
+            GlobalStates.altSwitcherOpen = true
+        }
+    }
+
+    function nextItem() {
+        ensureOpen()
+        ensureSnapshot()
+        const total = itemSnapshot ? itemSnapshot.length : 0
+        if (total === 0)
+            return
+        if (listView.currentIndex < 0)
+            listView.currentIndex = 0
+        else
+            listView.currentIndex = (listView.currentIndex + 1) % total
+        if (panelVisible)
+            autoHideTimer.restart()
+    }
+
+    function previousItem() {
+        ensureOpen()
+        ensureSnapshot()
+        const total = itemSnapshot ? itemSnapshot.length : 0
+        if (total === 0)
+            return
+        if (listView.currentIndex < 0)
+            listView.currentIndex = total - 1
+        else
+            listView.currentIndex = (listView.currentIndex - 1 + total) % total
+        if (panelVisible)
+            autoHideTimer.restart()
+    }
+
+    function activateCurrent() {
+        if (listView.currentItem && listView.currentItem.activate) {
+            listView.currentItem.activate()
+        }
+    }
+
+    IpcHandler {
+        target: "altSwitcher"
+
+        function open() {
+            ensureOpen()
+            autoHideTimer.restart()
+        }
+
+        function close() {
+            GlobalStates.altSwitcherOpen = false
+        }
+
+        function toggle() {
+            GlobalStates.altSwitcherOpen = !GlobalStates.altSwitcherOpen
+            if (GlobalStates.altSwitcherOpen)
+                autoHideTimer.restart()
+        }
+
+        function next() {
+            nextItem()
+            activateCurrent()
+            autoHideTimer.restart()
+        }
+
+        function previous() {
+            previousItem()
+            activateCurrent()
+            autoHideTimer.restart()
+        }
+    }
+}
