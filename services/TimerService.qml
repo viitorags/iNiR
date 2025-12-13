@@ -14,10 +14,46 @@ import QtQuick
 Singleton {
     id: root
 
-    property int focusTime: Config.options?.time?.pomodoro?.focus ?? 1500
-    property int breakTime: Config.options?.time?.pomodoro?.breakTime ?? 300
-    property int longBreakTime: Config.options?.time?.pomodoro?.longBreak ?? 900
-    property int cyclesBeforeLongBreak: Config.options?.time?.pomodoro?.cyclesBeforeLongBreak ?? 4
+    // Pomodoro config - use explicit properties to ensure reactivity
+    property int focusTime: 1500
+    property int breakTime: 300
+    property int longBreakTime: 900
+    property int cyclesBeforeLongBreak: 4
+
+    // Helper to sync all pomodoro values from Config
+    function _syncPomodoroConfig() {
+        root.focusTime = Config.options?.time?.pomodoro?.focus ?? 1500
+        root.breakTime = Config.options?.time?.pomodoro?.breakTime ?? 300
+        root.longBreakTime = Config.options?.time?.pomodoro?.longBreak ?? 900
+        root.cyclesBeforeLongBreak = Config.options?.time?.pomodoro?.cyclesBeforeLongBreak ?? 4
+    }
+
+    // Sync pomodoro config from Config.options.time.pomodoro
+    Connections {
+        target: Config.options?.time?.pomodoro ?? null
+        function onFocusChanged() { root._syncPomodoroConfig() }
+        function onBreakTimeChanged() { root._syncPomodoroConfig() }
+        function onLongBreakChanged() { root._syncPomodoroConfig() }
+        function onCyclesBeforeLongBreakChanged() { root._syncPomodoroConfig() }
+    }
+
+    // Re-sync when Config becomes ready or options change
+    Connections {
+        target: Config
+        function onReadyChanged() {
+            if (Config.ready) root._syncPomodoroConfig()
+        }
+    }
+
+    // Also sync when time object changes (in case pomodoro object is recreated)
+    Connections {
+        target: Config.options?.time ?? null
+        function onPomodoroChanged() { root._syncPomodoroConfig() }
+    }
+
+    Component.onCompleted: {
+        if (Config.ready) root._syncPomodoroConfig()
+    }
 
     property bool pomodoroRunning: Persistent.states?.timer?.pomodoro?.running ?? false
     property bool pomodoroBreak: Persistent.states?.timer?.pomodoro?.isBreak ?? false
