@@ -27,10 +27,39 @@ migration_apply() {
     return 0
   fi
   
-  # Find a good place to add
-  if grep -q 'XF86MonBrightness' "$config"; then
-    sed -i '/XF86MonBrightnessDown/a\    \n    // Media playback (hardware keys)\n    XF86AudioPlay { spawn "qs" "-c" "ii" "ipc" "call" "mpris" "playPause"; }\n    XF86AudioPause { spawn "qs" "-c" "ii" "ipc" "call" "mpris" "playPause"; }\n    XF86AudioNext { spawn "qs" "-c" "ii" "ipc" "call" "mpris" "next"; }\n    XF86AudioPrev { spawn "qs" "-c" "ii" "ipc" "call" "mpris" "previous"; }' "$config"
-  elif grep -q 'XF86Audio' "$config"; then
-    sed -i '/XF86Audio.*}/a\    \n    // Media playback (hardware keys)\n    XF86AudioPlay { spawn "qs" "-c" "ii" "ipc" "call" "mpris" "playPause"; }\n    XF86AudioPause { spawn "qs" "-c" "ii" "ipc" "call" "mpris" "playPause"; }\n    XF86AudioNext { spawn "qs" "-c" "ii" "ipc" "call" "mpris" "next"; }\n    XF86AudioPrev { spawn "qs" "-c" "ii" "ipc" "call" "mpris" "previous"; }' "$config"
-  fi
+  python3 << 'MIGRATE'
+import os
+
+config_path = os.path.expanduser("~/.config/niri/config.kdl")
+with open(config_path, 'r') as f:
+    lines = f.readlines()
+
+# Find the last line in binds section that starts with XF86MonBrightness or XF86Audio
+insert_idx = None
+in_binds = False
+for i, line in enumerate(lines):
+    stripped = line.strip()
+    if stripped.startswith('binds {'):
+        in_binds = True
+    if in_binds:
+        if stripped.startswith(('XF86MonBrightness', 'XF86Audio')):
+            insert_idx = i
+        if stripped == '}' and in_binds:
+            if insert_idx is None:
+                insert_idx = i - 1
+            break
+
+if insert_idx is not None:
+    media_block = '''
+    // Media playback (hardware keys)
+    XF86AudioPlay { spawn "qs" "-c" "ii" "ipc" "call" "mpris" "playPause"; }
+    XF86AudioPause { spawn "qs" "-c" "ii" "ipc" "call" "mpris" "playPause"; }
+    XF86AudioNext { spawn "qs" "-c" "ii" "ipc" "call" "mpris" "next"; }
+    XF86AudioPrev { spawn "qs" "-c" "ii" "ipc" "call" "mpris" "previous"; }
+'''
+    lines.insert(insert_idx + 1, media_block)
+    
+    with open(config_path, 'w') as f:
+        f.writelines(lines)
+MIGRATE
 }

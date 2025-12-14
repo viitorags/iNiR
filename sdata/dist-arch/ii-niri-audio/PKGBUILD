@@ -9,7 +9,6 @@ depends=(
   pipewire
   pipewire-pulse
   pipewire-alsa
-  pipewire-jack
   wireplumber
   
   # Media control
@@ -20,5 +19,9 @@ depends=(
   # Optional but included
   cava         # Audio visualizer widget
   easyeffects  # Audio effects toggle
+)
+optdepends=(
+  'pipewire-jack: JACK compatibility layer for PipeWire'
+  'jack2: Standalone JACK audio server (conflicts with pipewire-jack)'
 )
 
