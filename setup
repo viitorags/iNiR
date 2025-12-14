@@ -21,8 +21,8 @@ source ./sdata/lib/functions.sh
 source ./sdata/lib/package-installers.sh
 source ./sdata/lib/dist-determine.sh
 source ./sdata/lib/conflicts.sh
+source ./sdata/lib/versioning.sh    # Must be before migrations.sh
 source ./sdata/lib/migrations.sh
-source ./sdata/lib/versioning.sh
 source ./sdata/lib/robust-update.sh
 source ./sdata/lib/doctor.sh
 source ./sdata/lib/snapshots.sh

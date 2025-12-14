@@ -18,19 +18,9 @@ CURRENT_VERSION="2.0.0"
 #####################################################################################
 # Version Management
 #####################################################################################
-get_installed_version() {
-  if [[ -f "$VERSION_FILE" ]]; then
-    cat "$VERSION_FILE"
-  else
-    echo "0.0.0"
-  fi
-}
-
-set_installed_version() {
-  local version="$1"
-  mkdir -p "$(dirname "$VERSION_FILE")"
-  echo "$version" > "$VERSION_FILE"
-}
+# Note: get_installed_version() and set_installed_version() are defined in versioning.sh
+# which is sourced before this file. Those functions use JSON format with commit tracking.
+# The VERSION_FILE variable below is kept for backwards compatibility with old installs.
 
 #####################################################################################
 # Migration State Management
