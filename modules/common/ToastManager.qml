@@ -87,7 +87,8 @@ Scope {
         
         function onConfigLoadFinished(ok, error) {
             if (ok) {
-                if (!root.reloadToastsEnabled) return
+                // Suppress toast if GameMode triggered the reload
+                if (!root.reloadToastsEnabled || GameMode._suppressNiriToast) return
                 root.addToast(
                     "Niri config reloaded",
                     "",

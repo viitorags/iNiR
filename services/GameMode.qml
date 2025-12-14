@@ -24,6 +24,9 @@ Singleton {
     property bool active: _manualActive || _autoActive
     property bool autoDetect: Config.options?.gameMode?.autoDetect ?? true
     property bool manuallyActivated: _manualActive
+    
+    // Flag to suppress niri reload toast when we're the one triggering it
+    property bool _suppressNiriToast: false
 
     // Internal state
     property bool _manualActive: false
@@ -33,10 +36,14 @@ Singleton {
     // Config-driven behavior
     readonly property bool disableAnimations: Config.options?.gameMode?.disableAnimations ?? true
     readonly property bool disableEffects: Config.options?.gameMode?.disableEffects ?? true
-    readonly property int checkInterval: Config.options?.gameMode?.checkInterval ?? 2000
+    readonly property int checkInterval: Config.options?.gameMode?.checkInterval ?? 3000
 
     // Fullscreen detection threshold (allow small margin for bar/gaps)
     readonly property int _marginThreshold: 60
+    
+    // Hysteresis: require multiple consecutive checks to change auto state
+    property int _fullscreenCount: 0
+    readonly property int _hysteresisThreshold: 2
 
     // State file path
     readonly property string _stateFile: Quickshell.env("HOME") + "/.local/state/quickshell/user/gamemode_active"
@@ -107,7 +114,7 @@ Singleton {
     // Debounce timer for fullscreen checks
     Timer {
         id: checkDebounce
-        interval: 300
+        interval: 500
         onTriggered: root._doCheckFullscreen()
     }
 
@@ -119,14 +126,25 @@ Singleton {
     function _doCheckFullscreen() {
         if (!autoDetect || !CompositorService.isNiri) {
             _autoActive = false
+            _fullscreenCount = 0
             return
         }
 
         const focusedWindow = NiriService.activeWindow
-        const wasActive = _autoActive
-        _autoActive = isWindowFullscreen(focusedWindow)
+        const isFullscreen = isWindowFullscreen(focusedWindow)
         
-        if (_autoActive !== wasActive) {
+        // Hysteresis: require consistent state before changing
+        if (isFullscreen) {
+            _fullscreenCount = Math.min(_fullscreenCount + 1, _hysteresisThreshold + 1)
+        } else {
+            _fullscreenCount = Math.max(_fullscreenCount - 1, 0)
+        }
+        
+        const wasActive = _autoActive
+        const shouldBeActive = _fullscreenCount >= _hysteresisThreshold
+        
+        if (shouldBeActive !== wasActive) {
+            _autoActive = shouldBeActive
             console.log("[GameMode] Auto-detect:", _autoActive ? "fullscreen detected" : "no fullscreen")
         }
     }
@@ -163,7 +181,7 @@ Singleton {
         onExited: console.log("[GameMode] State saved:", root._manualActive)
     }
 
-    // React to window changes
+    // React to window changes - only on focus change, not every window update
     Connections {
         target: NiriService
         enabled: root.autoDetect && CompositorService.isNiri && root._initialized
@@ -171,13 +189,9 @@ Singleton {
         function onActiveWindowChanged() {
             root.checkFullscreen()
         }
-
-        function onWindowsChanged() {
-            root.checkFullscreen()
-        }
     }
 
-    // Periodic check as fallback
+    // Periodic check as fallback (less frequent)
     Timer {
         interval: root.checkInterval
         running: root.autoDetect && CompositorService.isNiri && root._initialized
@@ -212,11 +226,11 @@ Singleton {
 
     function setNiriAnimations(enabled) {
         if (!controlNiriAnimations) return
-        // Use sed to toggle "off" line in animations block
-        // If enabling (gamemode off): comment out "off" -> "//off"  
-        // If disabling (gamemode on): uncomment "off" -> "off"
-        // The pattern matches indented off///off after "animations {"
         
+        // Set flag to suppress toast
+        root._suppressNiriToast = true
+        
+        // Use sed to toggle "off" line in animations block
         niriAnimProcess.command = enabled
             ? ["bash", "-c", "sed -i '/^animations {/,/^}/ s/^\\([ \\t]*\\)off$/\\1\\/\\/off/' " + niriConfigPath + " && niri msg action reload-config"]
             : ["bash", "-c", "sed -i '/^animations {/,/^}/ s/^\\([ \\t]*\\)\\/\\/off$/\\1off/' " + niriConfigPath + " && niri msg action reload-config"]
@@ -229,7 +243,15 @@ Singleton {
             if (code === 0) {
                 console.log("[GameMode] Niri animations updated")
             }
+            // Clear suppress flag after a delay (to catch the reload event)
+            suppressClearTimer.start()
         }
+    }
+    
+    Timer {
+        id: suppressClearTimer
+        interval: 500
+        onTriggered: root._suppressNiriToast = false
     }
 
     // Track last niri animation state to avoid redundant updates
@@ -254,6 +276,5 @@ Singleton {
         if (CompositorService.isNiri && controlNiriAnimations) {
             niriAnimDebounce.restart()
         }
-        // Note: Appearance.animationsEnabled reacts to GameMode.active automatically via binding
     }
 }
