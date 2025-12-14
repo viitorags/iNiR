@@ -33,9 +33,6 @@ detect_system() {
     DETECTED_DE="Not running"
   fi
 
-  # Terminal detection
-  DETECTED_TERM="${TERM_PROGRAM:-${TERM:-unknown}}"
-  
   # Session type
   DETECTED_SESSION="${XDG_SESSION_TYPE:-unknown}"
   
@@ -45,7 +42,7 @@ detect_system() {
   elif command -v paru &>/dev/null; then
     DETECTED_AUR="paru"
   else
-    DETECTED_AUR="none (will install yay)"
+    DETECTED_AUR="none (will install)"
   fi
 }
 
@@ -54,8 +51,23 @@ detect_system
 #####################################################################################
 # Banner
 #####################################################################################
-printf "${STY_CYAN}${STY_BOLD}"
-cat << 'EOF'
+clear
+if $HAS_GUM; then
+    gum style \
+        --foreground 212 --border-foreground 99 \
+        --border double --align center \
+        --width 60 --margin "1 0" --padding "1 2" \
+        "██╗██╗      ███╗   ██╗██╗██████╗ ██╗" \
+        "██║██║      ████╗  ██║██║██╔══██╗██║" \
+        "██║██║█████╗██╔██╗ ██║██║██████╔╝██║" \
+        "██║██║╚════╝██║╚██╗██║██║██╔══██╗██║" \
+        "██║██║      ██║ ╚████║██║██║  ██║██║" \
+        "╚═╝╚═╝      ╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝╚═╝" \
+        "" \
+        "illogical-impulse on Niri"
+else
+    printf "${STY_CYAN}${STY_BOLD}"
+    cat << 'EOF'
 ╔══════════════════════════════════════════════════════════════╗
 ║                                                              ║
 ║     ██╗██╗      ███╗   ██╗██╗██████╗ ██╗                     ║
@@ -66,55 +78,58 @@ cat << 'EOF'
 ║     ╚═╝╚═╝      ╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝╚═╝                     ║
 ║                                                              ║
 ║          illogical-impulse on Niri                           ║
-║          Quickshell desktop environment                      ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
 EOF
-printf "${STY_RST}\n"
+    printf "${STY_RST}\n"
+fi
 
 #####################################################################################
 # System Info Display
 #####################################################################################
-echo -e "${STY_BLUE}${STY_BOLD}┌─ System Detection${STY_RST}"
-echo -e "${STY_BLUE}│${STY_RST}"
-echo -e "${STY_BLUE}│${STY_RST}  ${STY_BOLD}Distro${STY_RST}      ${DETECTED_DISTRO}"
-echo -e "${STY_BLUE}│${STY_RST}  ${STY_BOLD}Shell${STY_RST}       ${DETECTED_SHELL}"
-echo -e "${STY_BLUE}│${STY_RST}  ${STY_BOLD}Session${STY_RST}     ${DETECTED_SESSION}"
-echo -e "${STY_BLUE}│${STY_RST}  ${STY_BOLD}Compositor${STY_RST}  ${DETECTED_DE}"
-echo -e "${STY_BLUE}│${STY_RST}  ${STY_BOLD}AUR Helper${STY_RST}  ${DETECTED_AUR}"
-echo -e "${STY_BLUE}│${STY_RST}"
-echo -e "${STY_BLUE}└──────────────────────────────${STY_RST}"
+echo ""
+tui_title "System Detection"
+echo ""
+
+tui_table_header "Property" "Value" 12
+tui_table_row "Distro" "$DETECTED_DISTRO" 12
+tui_table_row "Shell" "$DETECTED_SHELL" 12
+tui_table_row "Session" "$DETECTED_SESSION" 12
+tui_table_row "Compositor" "$DETECTED_DE" 12
+tui_table_row "AUR Helper" "$DETECTED_AUR" 12
+tui_table_footer 12
+
 echo ""
 
 # Arch check
 if [[ "$DETECTED_DISTRO_ID" != "arch" && "$DETECTED_DISTRO_ID" != "endeavouros" && "$DETECTED_DISTRO_ID" != "manjaro" && "$DETECTED_DISTRO_ID" != "garuda" && "$DETECTED_DISTRO_ID" != "cachyos" ]]; then
-  echo -e "${STY_RED}${STY_BOLD}⚠ Warning:${STY_RST} This installer is designed for Arch-based distros."
-  echo -e "  Detected: ${DETECTED_DISTRO}"
-  echo -e "  You can continue, but package installation may fail."
+  tui_warn "This installer is designed for Arch-based distros."
+  tui_info "Detected: $DETECTED_DISTRO"
+  tui_info "You can continue, but package installation may fail."
   echo ""
 fi
 
 #####################################################################################
-# What will happen
+# Installation Plan
 #####################################################################################
-echo -e "${STY_CYAN}${STY_BOLD}┌─ Installation Plan${STY_RST}"
-echo -e "${STY_CYAN}│${STY_RST}"
-echo -e "${STY_CYAN}│${STY_RST}  ${STY_GREEN}✓${STY_RST} Install packages via pacman/AUR (Niri, Quickshell, Qt6, fonts...)"
-echo -e "${STY_CYAN}│${STY_RST}  ${STY_GREEN}✓${STY_RST} Configure user groups and systemd services"
-echo -e "${STY_CYAN}│${STY_RST}  ${STY_GREEN}✓${STY_RST} Setup GTK/Qt theming (Matugen, Kvantum, Darkly)"
-echo -e "${STY_CYAN}│${STY_RST}  ${STY_GREEN}✓${STY_RST} Configure ${DETECTED_SHELL} environment variables"
-echo -e "${STY_CYAN}│${STY_RST}  ${STY_GREEN}✓${STY_RST} Copy configs to ~/.config/ (with backups)"
-echo -e "${STY_CYAN}│${STY_RST}  ${STY_GREEN}✓${STY_RST} Set default wallpaper and generate initial theme"
-echo -e "${STY_CYAN}│${STY_RST}"
-echo -e "${STY_CYAN}└──────────────────────────────${STY_RST}"
+tui_title "Installation Plan"
 echo ""
 
-echo -e "${STY_YELLOW}${STY_BOLD}Note:${STY_RST} This may take a while depending on your internet speed."
-echo -e "      Existing configs will be backed up to: ${STY_UNDERLINE}${BACKUP_DIR}${STY_RST}"
+tui_success "Install packages (Niri, Quickshell, Qt6, fonts...)"
+tui_success "Configure user groups and systemd services"
+tui_success "Setup GTK/Qt theming (Matugen, Kvantum, Darkly)"
+tui_success "Copy configs to ~/.config/ (with backups)"
+tui_success "Set default wallpaper and generate theme"
+
+echo ""
+tui_subtitle "This may take a while depending on your internet speed."
+tui_subtitle "Existing configs will be backed up to: $BACKUP_DIR"
 echo ""
 
 if $ask; then
-  printf "${STY_PURPLE}${STY_BOLD}Ready to install?${STY_RST} Press Enter to continue or Ctrl+C to abort... "
-  read -r
+  if ! tui_confirm "Ready to install?"; then
+    echo "Cancelled."
+    exit 0
+  fi
   echo ""
 fi

@@ -1,108 +1,302 @@
 #!/bin/bash
-
 # TUI functions for ii-niri setup
-# Uses 'gum' if available, otherwise falls back to simple text menus
+# Uses 'gum' if available, falls back to simple menus
+# This script is meant to be sourced.
 
-function check_gum() {
-    command -v gum >/dev/null 2>&1
-}
+# shellcheck shell=bash
 
-function tui_header() {
-    clear
-    if check_gum; then
-        gum style --foreground 212 --border-foreground 212 --border double --align center --width 50 --margin "1 2" --padding "2 4" "illogical-impulse on Niri" "Setup & Management"
+###############################################################################
+# Gum Detection & Fallback
+###############################################################################
+HAS_GUM=false
+command -v gum &>/dev/null && HAS_GUM=true
+
+###############################################################################
+# Spinner / Progress
+###############################################################################
+tui_spin() {
+    local title="$1"
+    shift
+    if $HAS_GUM; then
+        gum spin --spinner dot --title "$title" -- "$@"
     else
-        echo -e "${STY_BOLD}${STY_CYAN}illogical-impulse on Niri - Setup & Management${STY_RST}"
-        echo "================================================"
-        echo ""
+        echo -n "$title... "
+        "$@" >/dev/null 2>&1
+        echo "done"
     fi
 }
 
-function tui_main_menu() {
-    tui_header
-    
-    local choice
-    if check_gum; then
-        choice=$(gum choose --header "What would you like to do?" "Install" "Update" "Status" "Migrate Configs" "Changelog" "Help" "Exit")
+###############################################################################
+# Styled Output
+###############################################################################
+tui_title() {
+    local text="$1"
+    if $HAS_GUM; then
+        gum style --foreground 212 --bold "$text"
     else
-        echo "Select an action:"
-        select c in "Install" "Update" "Status" "Migrate Configs" "Changelog" "Help" "Exit"; do
-            choice=$c
+        echo -e "${STY_CYAN}${STY_BOLD}$text${STY_RST}"
+    fi
+}
+
+tui_subtitle() {
+    local text="$1"
+    if $HAS_GUM; then
+        gum style --foreground 245 --italic "$text"
+    else
+        echo -e "${STY_FAINT}$text${STY_RST}"
+    fi
+}
+
+tui_success() {
+    local text="$1"
+    if $HAS_GUM; then
+        gum style --foreground 82 "✓ $text"
+    else
+        echo -e "${STY_GREEN}✓${STY_RST} $text"
+    fi
+}
+
+tui_error() {
+    local text="$1"
+    if $HAS_GUM; then
+        gum style --foreground 196 "✗ $text"
+    else
+        echo -e "${STY_RED}✗${STY_RST} $text"
+    fi
+}
+
+tui_warn() {
+    local text="$1"
+    if $HAS_GUM; then
+        gum style --foreground 214 "⚠ $text"
+    else
+        echo -e "${STY_YELLOW}⚠${STY_RST} $text"
+    fi
+}
+
+tui_info() {
+    local text="$1"
+    if $HAS_GUM; then
+        gum style --foreground 39 "→ $text"
+    else
+        echo -e "${STY_BLUE}→${STY_RST} $text"
+    fi
+}
+
+###############################################################################
+# Prompts
+###############################################################################
+tui_confirm() {
+    local prompt="${1:-Continue?}"
+    local default="${2:-yes}"
+    
+    if $HAS_GUM; then
+        if [[ "$default" == "yes" ]]; then
+            gum confirm --default=yes "$prompt"
+        else
+            gum confirm --default=no "$prompt"
+        fi
+    else
+        local yn_hint="[Y/n]"
+        [[ "$default" != "yes" ]] && yn_hint="[y/N]"
+        
+        read -p "$prompt $yn_hint " -n 1 -r
+        echo
+        if [[ "$default" == "yes" ]]; then
+            [[ ! $REPLY =~ ^[Nn]$ ]]
+        else
+            [[ $REPLY =~ ^[Yy]$ ]]
+        fi
+    fi
+}
+
+tui_input() {
+    local prompt="$1"
+    local default="$2"
+    
+    if $HAS_GUM; then
+        gum input --placeholder "$default" --prompt "$prompt "
+    else
+        read -p "$prompt [$default]: " value
+        echo "${value:-$default}"
+    fi
+}
+
+tui_choose() {
+    local header="$1"
+    shift
+    local options=("$@")
+    
+    if $HAS_GUM; then
+        gum choose --header "$header" "${options[@]}"
+    else
+        echo "$header"
+        select choice in "${options[@]}"; do
+            echo "$choice"
             break
         done
     fi
-    
-    case "$choice" in
-        "Install")
-            tui_install_menu
-            return 1 # Signal install
-            ;;
-        "Update")
-            return 2 # Signal update
-            ;;
-        "Status")
-            return 3 # Signal status
-            ;;
-        "Migrate Configs")
-            return 4 # Signal migrate
-            ;;
-        "Changelog")
-            return 5 # Signal changelog
-            ;;
-        "Help")
-            showhelp_global
-            exit 0
-            ;;
-        "Exit")
-            exit 0
-            ;;
-        *)
-            exit 0
-            ;;
-    esac
 }
 
-function tui_install_menu() {
-    local choices
-    if check_gum; then
-        choices=$(gum choose --no-limit --selected "Dependencies,System Setup,Config Files" --header "Select components to install (Space to toggle, Enter to confirm)" "Dependencies" "System Setup" "Config Files")
+tui_choose_multi() {
+    local header="$1"
+    shift
+    local options=("$@")
+    
+    if $HAS_GUM; then
+        gum choose --no-limit --header "$header" "${options[@]}"
     else
-        echo ""
-        echo "Install Components Selection:"
-        echo "1) Full Install (All)"
-        echo "2) Dependencies Only"
-        echo "3) System Setup Only"
-        echo "4) Config Files Only"
-        echo "5) Custom (Manual selection)"
-        echo ""
-        read -p "Select option [1]: " opt
-        case "$opt" in
-            2) choices="Dependencies";;
-            3) choices="System Setup";;
-            4) choices="Config Files";;
-            5) 
-               echo "Enter components to install (deps, setup, files):"
-               read choices
-               ;;
-            *) choices="Dependencies,System Setup,Config Files";;
-        esac
+        echo "$header (enter numbers separated by space, or 'all'):"
+        local i=1
+        for opt in "${options[@]}"; do
+            echo "  $i) $opt"
+            ((i++))
+        done
+        read -p "Selection: " selection
+        
+        if [[ "$selection" == "all" ]]; then
+            printf '%s\n' "${options[@]}"
+        else
+            for num in $selection; do
+                echo "${options[$((num-1))]}"
+            done
+        fi
     fi
+}
+
+###############################################################################
+# Boxes & Panels
+###############################################################################
+tui_box() {
+    local title="$1"
+    local content="$2"
+    local color="${3:-212}"
     
-    # Default to skipping all, then enable selected
-    # We export these so the main script sees them
-    export SKIP_ALLDEPS=true
-    export SKIP_ALLSETUPS=true
-    export SKIP_ALLFILES=true
-    
-    if [[ "$choices" == *"Dependencies"* ]] || [[ "$choices" == *"deps"* ]]; then
-        export SKIP_ALLDEPS=false
+    if $HAS_GUM; then
+        echo "$content" | gum style --border rounded --border-foreground "$color" --padding "0 1" --margin "0 0"
+    else
+        local width=60
+        local border_char="─"
+        local corner_tl="┌"
+        local corner_tr="┐"
+        local corner_bl="└"
+        local corner_br="┘"
+        local side="│"
+        
+        # Top border
+        echo -e "${STY_CYAN}${corner_tl}$(printf '%*s' $((width-2)) | tr ' ' "$border_char")${corner_tr}${STY_RST}"
+        
+        # Content
+        while IFS= read -r line; do
+            printf "${STY_CYAN}${side}${STY_RST} %-$((width-4))s ${STY_CYAN}${side}${STY_RST}\n" "$line"
+        done <<< "$content"
+        
+        # Bottom border
+        echo -e "${STY_CYAN}${corner_bl}$(printf '%*s' $((width-2)) | tr ' ' "$border_char")${corner_br}${STY_RST}"
     fi
-    
-    if [[ "$choices" == *"System Setup"* ]] || [[ "$choices" == *"setup"* ]]; then
-        export SKIP_ALLSETUPS=false
+}
+
+tui_banner() {
+    if $HAS_GUM; then
+        gum style \
+            --foreground 212 --border-foreground 99 \
+            --border double --align center \
+            --width 50 --margin "1 0" --padding "1 2" \
+            "ii-niri" "" "illogical-impulse on Niri"
+    else
+        echo -e "${STY_CYAN}${STY_BOLD}"
+        cat << 'EOF'
+╔══════════════════════════════════════════╗
+║              ii-niri                     ║
+║      illogical-impulse on Niri           ║
+╚══════════════════════════════════════════╝
+EOF
+        echo -e "${STY_RST}"
     fi
+}
+
+###############################################################################
+# Status Display
+###############################################################################
+tui_status_line() {
+    local label="$1"
+    local value="$2"
+    local status="${3:-}"  # ok, warn, error, or empty
     
-    if [[ "$choices" == *"Config Files"* ]] || [[ "$choices" == *"files"* ]]; then
-        export SKIP_ALLFILES=false
+    local color=""
+    case "$status" in
+        ok)    color="${STY_GREEN}" ;;
+        warn)  color="${STY_YELLOW}" ;;
+        error) color="${STY_RED}" ;;
+        *)     color="${STY_RST}" ;;
+    esac
+    
+    printf "  ${STY_BOLD}%-14s${STY_RST} ${color}%s${STY_RST}\n" "$label" "$value"
+}
+
+tui_divider() {
+    local char="${1:─}"
+    local width="${2:-50}"
+    if $HAS_GUM; then
+        gum style --foreground 240 "$(printf '%*s' "$width" | tr ' ' "$char")"
+    else
+        echo -e "${STY_FAINT}$(printf '%*s' "$width" | tr ' ' "$char")${STY_RST}"
     fi
+}
+
+###############################################################################
+# Progress Steps
+###############################################################################
+tui_step() {
+    local current="$1"
+    local total="$2"
+    local description="$3"
+    
+    if $HAS_GUM; then
+        gum style --foreground 212 --bold "[$current/$total]" --foreground 255 " $description"
+    else
+        echo -e "${STY_CYAN}${STY_BOLD}[$current/$total]${STY_RST} $description"
+    fi
+}
+
+tui_progress_bar() {
+    local current="$1"
+    local total="$2"
+    local width="${3:-40}"
+    
+    local percent=$((current * 100 / total))
+    local filled=$((current * width / total))
+    local empty=$((width - filled))
+    
+    local bar=""
+    for ((i=0; i<filled; i++)); do bar+="█"; done
+    for ((i=0; i<empty; i++)); do bar+="░"; done
+    
+    echo -e "${STY_CYAN}${bar}${STY_RST} ${percent}%"
+}
+
+###############################################################################
+# Tables
+###############################################################################
+tui_table_row() {
+    local col1="$1"
+    local col2="$2"
+    local col1_width="${3:-20}"
+    
+    printf "  ${STY_FAINT}│${STY_RST} %-${col1_width}s ${STY_FAINT}│${STY_RST} %s\n" "$col1" "$col2"
+}
+
+tui_table_header() {
+    local col1="$1"
+    local col2="$2"
+    local col1_width="${3:-20}"
+    
+    printf "  ${STY_FAINT}┌$(printf '%*s' $((col1_width+2)) | tr ' ' '─')┬$(printf '%*s' 30 | tr ' ' '─')┐${STY_RST}\n"
+    printf "  ${STY_FAINT}│${STY_RST} ${STY_BOLD}%-${col1_width}s${STY_RST} ${STY_FAINT}│${STY_RST} ${STY_BOLD}%s${STY_RST}\n" "$col1" "$col2"
+    printf "  ${STY_FAINT}├$(printf '%*s' $((col1_width+2)) | tr ' ' '─')┼$(printf '%*s' 30 | tr ' ' '─')┤${STY_RST}\n"
+}
+
+tui_table_footer() {
+    local col1_width="${1:-20}"
+    printf "  ${STY_FAINT}└$(printf '%*s' $((col1_width+2)) | tr ' ' '─')┴$(printf '%*s' 30 | tr ' ' '─')┘${STY_RST}\n"
 }

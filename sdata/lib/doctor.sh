@@ -9,17 +9,17 @@ doctor_failed=0
 doctor_fixed=0
 
 doctor_pass() {
-    echo -e "${STY_GREEN}✓${STY_RST} $1"
+    tui_success "$1"
     ((doctor_passed++)) || true
 }
 
 doctor_fail() {
-    echo -e "${STY_RED}✗${STY_RST} $1"
+    tui_error "$1"
     ((doctor_failed++)) || true
 }
 
 doctor_fix() {
-    echo -e "${STY_YELLOW}⚡${STY_RST} $1"
+    tui_warn "Fixed: $1"
     ((doctor_fixed++)) || true
 }
 
@@ -222,39 +222,60 @@ start_shell_if_needed() {
 ###############################################################################
 
 run_doctor_with_fixes() {
-    echo ""
-    echo -e "${STY_CYAN}${STY_BOLD}ii-niri Doctor${STY_RST}"
-    echo ""
-    
     doctor_passed=0
     doctor_failed=0
     doctor_fixed=0
     
+    tui_step 1 10 "Checking dependencies"
     check_dependencies
+    
+    tui_step 2 10 "Checking critical files"
     check_critical_files
+    
+    tui_step 3 10 "Checking script permissions"
     check_script_permissions
+    
+    tui_step 4 10 "Checking user config"
     check_user_config
+    
+    tui_step 5 10 "Checking state directories"
     check_state_directories
+    
+    tui_step 6 10 "Checking version tracking"
     check_version_tracking
+    
+    tui_step 7 10 "Checking file manifest"
     check_manifest
+    
+    tui_step 8 10 "Checking Niri compositor"
     check_niri_running
+    
+    tui_step 9 10 "Checking Python packages"
     check_python_packages
+    
+    tui_step 10 10 "Checking Quickshell"
     check_quickshell_loads
     start_shell_if_needed
     
     echo ""
-    echo -e "${STY_BOLD}Summary:${STY_RST} ${STY_GREEN}$doctor_passed passed${STY_RST}, ${STY_YELLOW}$doctor_fixed fixed${STY_RST}, ${STY_RED}$doctor_failed failed${STY_RST}"
+    tui_divider
+    echo ""
     
+    # Summary
+    tui_title "Summary"
+    echo ""
+    tui_status_line "Passed:" "$doctor_passed" "ok"
+    tui_status_line "Fixed:" "$doctor_fixed" "warn"
+    tui_status_line "Failed:" "$doctor_failed" "error"
+    
+    echo ""
     if [[ $doctor_failed -gt 0 ]]; then
-        echo ""
-        echo -e "${STY_RED}Some issues need manual attention.${STY_RST}"
+        tui_error "Some issues need manual attention."
         return 1
     elif [[ $doctor_fixed -gt 0 ]]; then
-        echo ""
-        echo -e "${STY_GREEN}All issues fixed automatically.${STY_RST}"
+        tui_success "All issues fixed automatically."
     else
-        echo ""
-        echo -e "${STY_GREEN}Everything looks good!${STY_RST}"
+        tui_success "Everything looks good!"
     fi
 }
 

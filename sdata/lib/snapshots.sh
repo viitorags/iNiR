@@ -188,36 +188,75 @@ run_rollback() {
     local snapshots=($(list_snapshots))
     
     if [[ ${#snapshots[@]} -eq 0 ]]; then
-        echo -e "${STY_YELLOW}No snapshots available${STY_RST}"
+        tui_warn "No snapshots available"
+        tui_info "Snapshots are created automatically before updates"
         return 1
     fi
     
-    show_snapshots
+    echo ""
+    tui_title "Available Snapshots"
+    echo ""
     
-    echo -e "Enter snapshot number to restore (or 'q' to quit):"
-    read -p ">>> " choice
+    # Build options array with details
+    local options=()
+    local i=1
+    for snap in "${snapshots[@]}"; do
+        local meta="${SNAPSHOTS_DIR}/${snap}/snapshot.json"
+        if [[ -f "$meta" ]] && command -v jq &>/dev/null; then
+            local date=$(jq -r '.created_at' "$meta" 2>/dev/null | cut -d'T' -f1)
+            local time=$(jq -r '.created_at' "$meta" 2>/dev/null | cut -d'T' -f2 | cut -d'-' -f1 | cut -d'+' -f1)
+            local commit=$(jq -r '.commit_before' "$meta" 2>/dev/null)
+            local reason=$(jq -r '.reason' "$meta" 2>/dev/null)
+            options+=("$date $time - $reason ($commit)")
+        else
+            options+=("$snap")
+        fi
+        ((i++))
+    done
+    options+=("Cancel")
     
-    [[ "$choice" == "q" || -z "$choice" ]] && return 0
+    local choice
+    if $HAS_GUM; then
+        choice=$(gum choose --header "Select snapshot to restore:" "${options[@]}")
+    else
+        echo "Select snapshot to restore:"
+        select c in "${options[@]}"; do
+            choice="$c"
+            break
+        done
+    fi
     
-    if [[ "$choice" =~ ^[0-9]+$ ]] && [[ "$choice" -ge 1 ]] && [[ "$choice" -le ${#snapshots[@]} ]]; then
-        local idx=$((choice - 1))
+    [[ "$choice" == "Cancel" || -z "$choice" ]] && return 0
+    
+    # Find the index of the selected option
+    local idx=-1
+    for ((i=0; i<${#options[@]}; i++)); do
+        if [[ "${options[$i]}" == "$choice" ]]; then
+            idx=$i
+            break
+        fi
+    done
+    
+    if [[ $idx -ge 0 && $idx -lt ${#snapshots[@]} ]]; then
         local snapshot_id="${snapshots[$idx]}"
+        local meta="${SNAPSHOTS_DIR}/${snapshot_id}/snapshot.json"
         
         echo ""
-        echo -e "${STY_YELLOW}This will restore your system to the state before:${STY_RST}"
-        local meta="${SNAPSHOTS_DIR}/${snapshot_id}/snapshot.json"
-        if [[ -f "$meta" ]]; then
-            jq -r '"  Commit: \(.commit_before)\n  Reason: \(.reason)\n  Date: \(.created_at)"' "$meta"
+        tui_warn "This will restore your system to:"
+        if [[ -f "$meta" ]] && command -v jq &>/dev/null; then
+            tui_status_line "Commit:" "$(jq -r '.commit_before' "$meta")" ""
+            tui_status_line "Reason:" "$(jq -r '.reason' "$meta")" ""
+            tui_status_line "Date:" "$(jq -r '.created_at' "$meta" | cut -d'T' -f1)" ""
         fi
         echo ""
-        read -p "Continue? [y/N] " -n 1 -r
-        echo
         
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
+        if tui_confirm "Continue with rollback?" "no"; then
             restore_snapshot "$snapshot_id"
+        else
+            echo "Cancelled."
         fi
     else
-        echo -e "${STY_RED}Invalid choice${STY_RST}"
+        tui_error "Invalid selection"
     fi
 }
 

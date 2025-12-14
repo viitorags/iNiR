@@ -18,18 +18,17 @@ trap 'rm -rf /tmp/buildyay /tmp/buildparu 2>/dev/null' EXIT TERM
 # Load core libraries
 source ./sdata/lib/environment-variables.sh
 source ./sdata/lib/functions.sh
+source ./sdata/lib/tui.sh
 source ./sdata/lib/package-installers.sh
 source ./sdata/lib/dist-determine.sh
 source ./sdata/lib/conflicts.sh
-source ./sdata/lib/versioning.sh    # Must be before migrations.sh
+source ./sdata/lib/versioning.sh
 source ./sdata/lib/migrations.sh
 source ./sdata/lib/robust-update.sh
 source ./sdata/lib/doctor.sh
 source ./sdata/lib/snapshots.sh
 
 prevent_sudo_or_root
-
-trap 'rm -rf /tmp/buildyay /tmp/buildparu 2>/dev/null' EXIT INT TERM
 
 # Defaults
 ask=true
@@ -39,72 +38,84 @@ quiet=false
 # Help
 ###############################################################################
 show_help() {
-    cat << 'EOF'
-ii-niri setup
-
-Usage: ./setup [command] [options]
-
-Commands:
-  (none)     Interactive menu
-  install    Full installation (deps + config + files)
-  update     Check remote, pull, sync, restart shell
-  doctor     Diagnose and fix problems
-  rollback   Restore previous snapshot
-
-Options:
-  -y, --yes     Skip prompts (auto-yes)
-  -q, --quiet   Minimal output
-  -h, --help    Show this help
-
-Examples:
-  ./setup              # Interactive menu
-  ./setup update       # Check for updates and apply
-  ./setup rollback     # Restore previous state
-EOF
+    echo ""
+    tui_title "ii-niri setup"
+    echo ""
+    echo "Usage: ./setup [command] [options]"
+    echo ""
+    tui_subtitle "Commands:"
+    echo "  (none)     Interactive menu"
+    echo "  install    Full installation (deps + config + files)"
+    echo "  update     Check remote, pull, sync, restart shell"
+    echo "  doctor     Diagnose and fix problems"
+    echo "  rollback   Restore previous snapshot"
+    echo ""
+    tui_subtitle "Options:"
+    echo "  -y, --yes     Skip prompts (auto-yes)"
+    echo "  -q, --quiet   Minimal output"
+    echo "  -h, --help    Show this help"
+    echo ""
+    tui_subtitle "Examples:"
+    echo "  ./setup              # Interactive menu"
+    echo "  ./setup update       # Check for updates and apply"
+    echo "  ./setup doctor       # Fix common issues"
+    echo "  ./setup rollback     # Restore previous state"
+    echo ""
 }
 
 ###############################################################################
-# TUI
+# Version Status Display
+###############################################################################
+show_version_info() {
+    local installed_ver=$(get_installed_version)
+    local installed_commit=$(get_installed_commit)
+    local repo_ver=$(get_repo_version)
+    local repo_commit=$(get_repo_commit)
+    
+    echo ""
+    tui_status_line "Installed:" "$installed_ver ($installed_commit)" "ok"
+    tui_status_line "Available:" "$repo_ver ($repo_commit)" ""
+    
+    # Check for pending migrations
+    local pending=$(count_pending_migrations 2>/dev/null || echo "0")
+    if [[ "$pending" -gt 0 ]]; then
+        tui_status_line "Migrations:" "$pending pending" "warn"
+    fi
+    
+    # Check for updates
+    if [[ "$installed_commit" != "$repo_commit" ]]; then
+        echo ""
+        tui_warn "Update available"
+    fi
+}
+
+###############################################################################
+# TUI Menu
 ###############################################################################
 tui_menu() {
     clear
-    echo -e "${STY_CYAN}${STY_BOLD}"
-    cat << 'BANNER'
-╔══════════════════════════════════════════╗
-║       ii-niri Setup & Management         ║
-╚══════════════════════════════════════════╝
-BANNER
-    echo -e "${STY_RST}"
+    tui_banner
     
     # Detect current state
     local is_installed=false
     [[ -f "${XDG_CONFIG_HOME}/illogical-impulse/installed_true" ]] && is_installed=true
     
     if $is_installed; then
-        local installed_ver=$(get_installed_version)
-        local repo_ver=$(get_repo_version)
-        echo -e "  Installed: ${STY_GREEN}${installed_ver}${STY_RST}"
-        echo -e "  Available: ${STY_CYAN}${repo_ver}${STY_RST}"
+        show_version_info
         echo ""
+        tui_divider
     fi
     
-    # Menu
-    if command -v gum &>/dev/null; then
-        local choice
-        if $is_installed; then
-            choice=$(gum choose --header "What would you like to do?" \
-                "Update" "Doctor" "Rollback" "Reinstall" "Help" "Exit")
-        else
-            choice=$(gum choose --header "What would you like to do?" \
-                "Install" "Help" "Exit")
-        fi
+    echo ""
+    
+    # Menu options based on state
+    local choice
+    if $is_installed; then
+        choice=$(tui_choose "What would you like to do?" \
+            "Update" "Doctor" "Rollback" "Reinstall" "Status" "Help" "Exit")
     else
-        echo "Select an option:"
-        if $is_installed; then
-            select choice in "Update" "Doctor" "Rollback" "Reinstall" "Help" "Exit"; do break; done
-        else
-            select choice in "Install" "Help" "Exit"; do break; done
-        fi
+        choice=$(tui_choose "What would you like to do?" \
+            "Install" "Help" "Exit")
     fi
     
     case "$choice" in
@@ -112,9 +123,62 @@ BANNER
         Update) run_update ;;
         Doctor) run_doctor ;;
         Rollback) run_rollback ;;
-        Help) show_help; exit 0 ;;
+        Status) show_status; read -p "Press Enter to continue..." ;;
+        Help) show_help; read -p "Press Enter to continue..." ;;
         *) exit 0 ;;
     esac
+}
+
+###############################################################################
+# Status Command
+###############################################################################
+show_status() {
+    echo ""
+    tui_title "ii-niri Status"
+    echo ""
+    
+    local installed_ver=$(get_installed_version)
+    local installed_commit=$(get_installed_commit)
+    local repo_ver=$(get_repo_version)
+    local repo_commit=$(get_repo_commit)
+    
+    tui_table_header "Property" "Value"
+    tui_table_row "Version" "$installed_ver"
+    tui_table_row "Commit" "$installed_commit"
+    tui_table_row "Repo Version" "$repo_ver"
+    tui_table_row "Repo Commit" "$repo_commit"
+    tui_table_footer
+    
+    echo ""
+    
+    # Check shell status
+    if pgrep -f "qs.*-c.*ii" &>/dev/null; then
+        tui_success "Shell is running"
+    else
+        tui_warn "Shell is not running"
+    fi
+    
+    # Check Niri
+    if [[ -n "$NIRI_SOCKET" ]]; then
+        tui_success "Niri compositor detected"
+    else
+        tui_warn "Not running in Niri session"
+    fi
+    
+    # Pending migrations
+    local pending=$(count_pending_migrations 2>/dev/null || echo "0")
+    if [[ "$pending" -gt 0 ]]; then
+        echo ""
+        tui_warn "$pending pending migration(s)"
+        tui_info "Run './setup update' to review"
+    fi
+    
+    # Snapshots
+    local snapshot_count=$(list_snapshots 2>/dev/null | wc -l)
+    if [[ "$snapshot_count" -gt 0 ]]; then
+        echo ""
+        tui_info "$snapshot_count snapshot(s) available for rollback"
+    fi
 }
 
 ###############################################################################
@@ -131,16 +195,19 @@ run_install() {
     
     # 1. Dependencies
     if [[ "${SKIP_DEPS}" != "true" ]]; then
+        tui_step 1 3 "Installing dependencies"
         source ./sdata/subcmd-install/1.deps-router.sh
     fi
     
     # 2. System setup (groups, services)
     if [[ "${SKIP_SETUPS}" != "true" ]]; then
+        tui_step 2 3 "System configuration"
         source ./sdata/subcmd-install/2.setups.sh
     fi
     
     # 3. Config files
     if [[ "${SKIP_FILES}" != "true" ]]; then
+        tui_step 3 3 "Installing config files"
         source ./sdata/subcmd-install/3.files.sh
     fi
     
@@ -152,31 +219,34 @@ run_install() {
 # Update
 ###############################################################################
 run_update() {
-    # Check for remote updates first
-    echo -e "${STY_FAINT}Checking for updates...${STY_RST}"
+    echo ""
+    tui_title "Checking for updates..."
+    echo ""
     
     if check_remote_updates; then
         show_pending_commits
         
         if $ask; then
-            read -p "Pull and apply these updates? [Y/n] " -n 1 -r
-            echo
-            [[ $REPLY =~ ^[Nn]$ ]] && { echo "Cancelled."; return 0; }
+            if ! tui_confirm "Pull and apply these updates?"; then
+                echo "Cancelled."
+                return 0
+            fi
         fi
         
         # Create snapshot BEFORE pulling
-        log_info "Creating snapshot..."
+        tui_info "Creating snapshot..."
         local remote_commit=$(get_remote_commit)
         local snapshot_id=$(create_snapshot "update" "Before update to ${remote_commit}" "$remote_commit")
-        echo -e "${STY_GREEN}✓ Snapshot created: ${snapshot_id}${STY_RST}"
+        tui_success "Snapshot: $snapshot_id"
         
         # Pull changes
-        log_info "Pulling changes..."
-        git -C "$REPO_ROOT" pull --ff-only origin 2>/dev/null || {
-            log_error "Git pull failed. You may have local changes."
-            echo -e "${STY_YELLOW}Run: git stash && ./setup update${STY_RST}"
+        tui_info "Pulling changes..."
+        if ! git -C "$REPO_ROOT" pull --ff-only origin 2>/dev/null; then
+            tui_error "Git pull failed. You may have local changes."
+            tui_info "Try: git stash && ./setup update"
             return 1
-        }
+        fi
+        tui_success "Changes pulled"
     else
         # Check if local repo is ahead of installed
         local installed_ver=$(get_installed_version)
@@ -185,33 +255,33 @@ run_update() {
         local repo_commit=$(get_repo_commit)
         
         if [[ "$installed_ver" == "0.0.0" ]] && [[ -f "${XDG_CONFIG_HOME}/illogical-impulse/installed_true" ]]; then
-            log_info "Detected existing installation without version tracking"
+            tui_info "Detected existing installation without version tracking"
         elif [[ "$installed_commit" == "$repo_commit" ]]; then
-            echo -e "${STY_GREEN}✓ Already up to date${STY_RST} ($installed_ver)"
+            tui_success "Already up to date ($installed_ver)"
             
             local pending=$(count_pending_migrations)
             if [[ "$pending" -gt 0 ]]; then
-                echo -e "${STY_YELLOW}$pending pending migration(s) available${STY_RST}"
-                if $ask; then
-                    read -p "Apply migrations now? [Y/n] " -n 1 -r
-                    echo
-                    [[ ! $REPLY =~ ^[Nn]$ ]] && run_migrations_interactive
+                echo ""
+                tui_warn "$pending pending migration(s) available"
+                if $ask && tui_confirm "Apply migrations now?"; then
+                    run_migrations_interactive
                 fi
             fi
             return 0
         else
             # Local repo ahead of installed - create snapshot
-            log_info "Creating snapshot..."
+            tui_info "Creating snapshot..."
             local snapshot_id=$(create_snapshot "update" "Before sync to ${repo_commit}" "$repo_commit")
-            echo -e "${STY_GREEN}✓ Snapshot created: ${snapshot_id}${STY_RST}"
+            tui_success "Snapshot: $snapshot_id"
         fi
     fi
     
-    # Now sync the files
+    # Sync files
     local repo_ver=$(get_repo_version)
     local repo_commit=$(get_repo_commit)
     
-    echo -e "${STY_CYAN}Syncing ii-niri...${STY_RST}"
+    echo ""
+    tui_info "Syncing ii-niri..."
     
     II_SOURCE="${REPO_ROOT}"
     II_TARGET="${XDG_CONFIG_HOME}/quickshell/ii"
@@ -244,37 +314,38 @@ run_update() {
     # Update version
     set_installed_version "$repo_ver" "$repo_commit" "update"
     
-    echo -e "${STY_GREEN}✓ Update complete${STY_RST}"
+    tui_success "Files synced"
     
     # Migrations
     local pending=$(count_pending_migrations)
     if [[ "$pending" -gt 0 ]]; then
         echo ""
-        echo -e "${STY_YELLOW}$pending optional migration(s) available${STY_RST}"
-        if $ask; then
-            read -p "Review and apply? [Y/n] " -n 1 -r
-            echo
-            [[ ! $REPLY =~ ^[Nn]$ ]] && run_migrations_interactive
+        tui_warn "$pending optional migration(s) available"
+        if $ask && tui_confirm "Review and apply?"; then
+            run_migrations_interactive
         fi
     fi
     
     # Restart shell
     echo ""
-    log_info "Restarting shell..."
+    tui_info "Restarting shell..."
     qs kill -c ii 2>/dev/null || true
     sleep 1
     nohup qs -c ii >/dev/null 2>&1 &
     disown
-    echo -e "${STY_GREEN}✓ Shell restarted${STY_RST}"
+    tui_success "Shell restarted"
     
     echo ""
-    echo -e "${STY_FAINT}Tip: Run './setup rollback' if something breaks${STY_RST}"
+    tui_subtitle "Tip: Run './setup rollback' if something breaks"
 }
 
 ###############################################################################
-# Doctor (delegates to doctor.sh but with fixes)
+# Doctor
 ###############################################################################
 run_doctor() {
+    echo ""
+    tui_title "ii-niri Doctor"
+    echo ""
     run_doctor_with_fixes
 }
 
@@ -288,6 +359,7 @@ while [[ $# -gt 0 ]]; do
         update) COMMAND="update"; shift ;;
         doctor) COMMAND="doctor"; shift ;;
         rollback) COMMAND="rollback"; shift ;;
+        status) COMMAND="status"; shift ;;
         -y|--yes) ask=false; shift ;;
         -q|--quiet) quiet=true; shift ;;
         -h|--help) show_help; exit 0 ;;
@@ -303,5 +375,6 @@ case "$COMMAND" in
     update) run_update ;;
     doctor) run_doctor ;;
     rollback) run_rollback ;;
+    status) show_status ;;
     "") tui_menu ;;
 esac
