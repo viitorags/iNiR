@@ -12,6 +12,8 @@ Item {
     id: root
     required property var scopeRoot
     property int sidebarPadding: 10
+    property bool isDetached: scopeRoot?.detach ?? false
+    property int maxContentWidth: 800 // Max width for comfortable reading in detached mode
     anchors.fill: parent
     property bool aiChatEnabled: (Config.options?.policies?.ai ?? 0) !== 0
     property bool translatorEnabled: (Config.options?.sidebar?.translator?.enable ?? false)
@@ -47,6 +49,8 @@ Item {
         anchors {
             fill: parent
             margins: sidebarPadding
+            leftMargin: root.isDetached ? Math.max(sidebarPadding, (parent.width - root.maxContentWidth) / 2) : sidebarPadding
+            rightMargin: root.isDetached ? Math.max(sidebarPadding, (parent.width - root.maxContentWidth) / 2) : sidebarPadding
         }
         spacing: sidebarPadding
 

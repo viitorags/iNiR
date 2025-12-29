@@ -192,6 +192,10 @@ Scope { // Scope
             property var contentParent: detachedSidebarBackground
             color: "transparent"
 
+            // Reasonable default size for detached mode
+            implicitWidth: 700
+            implicitHeight: 800
+
             visible: GlobalStates.sidebarLeftOpen
             onVisibleChanged: {
                 if (visible && detachedSidebarBackground.children.length > 0) {
@@ -203,7 +207,11 @@ Scope { // Scope
             Rectangle {
                 id: detachedSidebarBackground
                 anchors.fill: parent
+                anchors.margins: 8
                 color: Appearance.colors.colLayer0
+                radius: Appearance.rounding.normal
+                border.width: 1
+                border.color: Appearance.colors.colLayer0Border
 
                 Keys.onPressed: (event) => {
                     if (event.modifiers === Qt.ControlModifier) {
