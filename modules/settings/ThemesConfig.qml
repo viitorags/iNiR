@@ -22,44 +22,186 @@ ContentPage {
         title: Translation.tr("Color Themes")
 
         SettingsGroup {
-            StyledText {
-                Layout.fillWidth: true
-                text: Translation.tr("Select a color theme. Choose 'Auto' to use colors from your wallpaper.")
-                color: Appearance.colors.colSubtext
-                font.pixelSize: Appearance.font.pixelSize.smaller
-                wrapMode: Text.WordWrap
+            id: themesGroup
+            
+            property string searchQuery: ""
+            property int selectedTab: 0  // 0=All, 1=Dark, 2=Light
+            
+            function isDarkTheme(preset) {
+                if (preset.id === "auto" || preset.id === "custom") return true
+                if (!preset.colors) return true
+                const bg = preset.colors.m3background ?? "#000"
+                const r = parseInt(bg.slice(1, 3), 16) / 255
+                const g = parseInt(bg.slice(3, 5), 16) / 255
+                const b = parseInt(bg.slice(5, 7), 16) / 255
+                return (0.299 * r + 0.587 * g + 0.114 * b) < 0.5
+            }
+            
+            readonly property var filteredPresets: {
+                let result = []
+                for (let i = 0; i < ThemePresets.presets.length; i++) {
+                    const preset = ThemePresets.presets[i]
+                    if (selectedTab === 1 && !isDarkTheme(preset)) continue
+                    if (selectedTab === 2 && isDarkTheme(preset)) continue
+                    if (searchQuery.length > 0) {
+                        const query = searchQuery.toLowerCase()
+                        const name = (preset.name ?? "").toLowerCase()
+                        const desc = (preset.description ?? "").toLowerCase()
+                        if (!name.includes(query) && !desc.includes(query)) continue
+                    }
+                    result.push(preset)
+                }
+                return result
             }
 
+            // Compact search + filter row
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
 
-                MaterialSymbol {
-                    text: "check_circle"
-                    iconSize: Appearance.font.pixelSize.normal
-                    color: Appearance.m3colors.m3primary
+                // Search
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 32
+                    radius: 16
+                    color: Appearance.colors.colLayer1
+                    border.width: searchField.activeFocus ? 1.5 : 0
+                    border.color: Appearance.m3colors.m3primary
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 10
+                        anchors.rightMargin: 8
+                        spacing: 6
+
+                        MaterialSymbol {
+                            text: "search"
+                            iconSize: 14
+                            color: Appearance.colors.colSubtext
+                        }
+
+                        TextInput {
+                            id: searchField
+                            Layout.fillWidth: true
+                            Layout.alignment: Qt.AlignVCenter
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            font.family: Appearance.font.family.main
+                            color: Appearance.colors.colOnLayer1
+                            clip: true
+                            onTextChanged: themesGroup.searchQuery = text
+
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: Translation.tr("Search...")
+                                font: parent.font
+                                color: Appearance.colors.colSubtext
+                                opacity: 0.6
+                                visible: !parent.text && !parent.activeFocus
+                            }
+                        }
+
+                        MaterialSymbol {
+                            visible: searchField.text.length > 0
+                            text: "close"
+                            iconSize: 12
+                            color: Appearance.colors.colSubtext
+                            
+                            MouseArea {
+                                anchors.fill: parent
+                                anchors.margins: -4
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: searchField.text = ""
+                            }
+                        }
+                    }
                 }
 
-                StyledText {
-                    text: Translation.tr("Current: %1").arg(ThemePresets.getPreset(ThemeService.currentTheme).name)
-                    font.pixelSize: Appearance.font.pixelSize.small
+                // Tab pills
+                Row {
+                    spacing: 4
+                    
+                    Repeater {
+                        model: [
+                            { icon: "apps", tip: "All" },
+                            { icon: "dark_mode", tip: "Dark" },
+                            { icon: "light_mode", tip: "Light" }
+                        ]
+
+                        Rectangle {
+                            required property var modelData
+                            required property int index
+                            
+                            width: 28
+                            height: 28
+                            radius: 14
+                            color: themesGroup.selectedTab === index 
+                                ? Appearance.m3colors.m3primary 
+                                : tabMouse.containsMouse ? Appearance.colors.colLayer1Hover : Appearance.colors.colLayer1
+
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                text: modelData.icon
+                                iconSize: 14
+                                color: themesGroup.selectedTab === index 
+                                    ? Appearance.m3colors.m3onPrimary 
+                                    : Appearance.colors.colOnLayer1
+                            }
+
+                            MouseArea {
+                                id: tabMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: themesGroup.selectedTab = index
+                            }
+
+                            StyledToolTip { text: modelData.tip; visible: tabMouse.containsMouse }
+                        }
+                    }
                 }
             }
 
-            Flow {
-                id: themeFlow
+            // Theme grid - 2 columns
+            Grid {
                 Layout.fillWidth: true
-                spacing: 8
+                Layout.topMargin: 10
+                columns: 2
+                columnSpacing: 6
+                rowSpacing: 6
 
                 Repeater {
-                    model: ThemePresets.presets
+                    model: themesGroup.filteredPresets
 
                     ThemePresetCard {
                         required property var modelData
-                        width: Math.max(140, (themeFlow.width - themeFlow.spacing * 3) / 4)
+                        width: (parent.width - parent.columnSpacing) / 2
                         preset: modelData
                         onClicked: ThemeService.setTheme(modelData.id)
                     }
+                }
+            }
+
+            // Empty state
+            ColumnLayout {
+                visible: themesGroup.filteredPresets.length === 0
+                Layout.fillWidth: true
+                Layout.topMargin: 20
+                Layout.bottomMargin: 20
+                spacing: 8
+
+                MaterialSymbol {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: "search_off"
+                    iconSize: 32
+                    color: Appearance.colors.colSubtext
+                    opacity: 0.5
+                }
+
+                StyledText {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: Translation.tr("No themes found")
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    color: Appearance.colors.colSubtext
                 }
             }
         }

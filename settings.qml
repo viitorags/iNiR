@@ -827,6 +827,16 @@ ApplicationWindow {
 
     Component.onCompleted: {
         Config.readWriteDelay = 0 // Settings app always only sets one var at a time so delay isn't needed
+        
+        const startPage = Quickshell.env("QS_SETTINGS_PAGE");
+        if (startPage) root.currentPage = parseInt(startPage);
+
+        const startSection = Quickshell.env("QS_SETTINGS_SECTION");
+        if (startSection) {
+            root.pendingSpotlightSection = startSection;
+            root.pendingSpotlightPageIndex = root.currentPage;
+            root.trySpotlight();
+        }
     }
 
     // Apply theme when Config is ready

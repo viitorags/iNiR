@@ -912,7 +912,7 @@ ContentPage {
 
         SettingsGroup {
             ContentSubsection {
-                title: Translation.tr("Style")
+                title: Translation.tr("General")
                 SettingsSwitch {
                     buttonIcon: "branding_watermark"
                     text: Translation.tr("Use Card style")
@@ -927,7 +927,6 @@ ContentPage {
                             : Translation.tr("Only available with Material or Inir global style")
                     }
                 }
-            }
 
             SettingsSwitch {
                 buttonIcon: "memory"
@@ -950,9 +949,10 @@ ContentPage {
                     text: Translation.tr("Open file manager when downloading wallpapers from Wallhaven or Booru")
                 }
             }
+            }
 
             ContentSubsection {
-                title: Translation.tr("Left sidebar tabs")
+                title: Translation.tr("Left Sidebar")
                 tooltip: Translation.tr("Choose which tabs appear in the left sidebar")
 
                 SettingsSwitch {
@@ -1044,8 +1044,138 @@ ContentPage {
                         text: Translation.tr("Niri debug options and quick actions")
                     }
                 }
+
+                SettingsSwitch {
+                    buttonIcon: "library_music"
+                    text: Translation.tr("YT Music")
+                    checked: Config.options.sidebar?.ytmusic?.enable ?? false
+                    onCheckedChanged: Config.setNestedValue("sidebar.ytmusic.enable", checked)
+                    StyledToolTip {
+                        text: Translation.tr("Search and play music from YouTube using yt-dlp")
+                    }
+                }
             }
 
+            ContentSubsection {
+                id: rightSidebarWidgets
+                title: Translation.tr("Right Sidebar")
+                tooltip: Translation.tr("Toggle which widgets appear in the right sidebar")
+
+                readonly property var defaults: ["calendar", "todo", "notepad", "calculator", "sysmon", "timer"]
+
+                function isEnabled(widgetId) {
+                    return (Config.options?.sidebar?.right?.enabledWidgets ?? defaults).includes(widgetId)
+                }
+
+                function setWidget(widgetId, active) {
+                    console.log(`[RightSidebar] setWidget(${widgetId}, ${active})`)
+                    let current = [...(Config.options?.sidebar?.right?.enabledWidgets ?? defaults)]
+                    console.log(`[RightSidebar] Current widgets:`, JSON.stringify(current))
+                    
+                    if (active && !current.includes(widgetId)) {
+                        current.push(widgetId)
+                        console.log(`[RightSidebar] Adding ${widgetId}, new array:`, JSON.stringify(current))
+                        Config.setNestedValue("sidebar.right.enabledWidgets", current)
+                    } else if (!active && current.includes(widgetId)) {
+                        current.splice(current.indexOf(widgetId), 1)
+                        console.log(`[RightSidebar] Removing ${widgetId}, new array:`, JSON.stringify(current))
+                        Config.setNestedValue("sidebar.right.enabledWidgets", current)
+                    } else {
+                        console.log(`[RightSidebar] No change needed`)
+                    }
+                }
+
+                SettingsSwitch {
+                    buttonIcon: "calendar_month"
+                    text: Translation.tr("Calendar")
+                    Component.onCompleted: checked = rightSidebarWidgets.isEnabled("calendar")
+                    Connections {
+                        target: Config
+                        function onConfigChanged() {
+                            checked = rightSidebarWidgets.isEnabled("calendar")
+                        }
+                    }
+                    onClicked: {
+                        // checked ya fue invertido por ConfigSwitch.onClicked
+                        rightSidebarWidgets.setWidget("calendar", checked)
+                    }
+                }
+                
+                SettingsSwitch {
+                    buttonIcon: "done_outline"
+                    text: Translation.tr("To Do")
+                    Component.onCompleted: checked = rightSidebarWidgets.isEnabled("todo")
+                    Connections {
+                        target: Config
+                        function onConfigChanged() {
+                            checked = rightSidebarWidgets.isEnabled("todo")
+                        }
+                    }
+                    onClicked: {
+                        rightSidebarWidgets.setWidget("todo", checked)
+                    }
+                }
+                
+                SettingsSwitch {
+                    buttonIcon: "edit_note"
+                    text: Translation.tr("Notepad")
+                    Component.onCompleted: checked = rightSidebarWidgets.isEnabled("notepad")
+                    Connections {
+                        target: Config
+                        function onConfigChanged() {
+                            checked = rightSidebarWidgets.isEnabled("notepad")
+                        }
+                    }
+                    onClicked: {
+                        rightSidebarWidgets.setWidget("notepad", checked)
+                    }
+                }
+
+                SettingsSwitch {
+                    buttonIcon: "calculate"
+                    text: Translation.tr("Calculator")
+                    Component.onCompleted: checked = rightSidebarWidgets.isEnabled("calculator")
+                    Connections {
+                        target: Config
+                        function onConfigChanged() {
+                            checked = rightSidebarWidgets.isEnabled("calculator")
+                        }
+                    }
+                    onClicked: {
+                        rightSidebarWidgets.setWidget("calculator", checked)
+                    }
+                }
+
+                SettingsSwitch {
+                    buttonIcon: "monitor_heart"
+                    text: Translation.tr("System Monitor")
+                    Component.onCompleted: checked = rightSidebarWidgets.isEnabled("sysmon")
+                    Connections {
+                        target: Config
+                        function onConfigChanged() {
+                            checked = rightSidebarWidgets.isEnabled("sysmon")
+                        }
+                    }
+                    onClicked: {
+                        rightSidebarWidgets.setWidget("sysmon", checked)
+                    }
+                }
+
+                SettingsSwitch {
+                    buttonIcon: "schedule"
+                    text: Translation.tr("Timer")
+                    Component.onCompleted: checked = rightSidebarWidgets.isEnabled("timer")
+                    Connections {
+                        target: Config
+                        function onConfigChanged() {
+                            checked = rightSidebarWidgets.isEnabled("timer")
+                        }
+                    }
+                    onClicked: {
+                        rightSidebarWidgets.setWidget("timer", checked)
+                    }
+                }
+            }
             ContentSubsection {
                 title: Translation.tr("Reddit")
                 visible: Config.options.sidebar?.reddit?.enable ?? false
