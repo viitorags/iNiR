@@ -482,6 +482,15 @@ if ! command -v niri &>/dev/null; then
       echo -e "${STY_GREEN}[$0]: Niri installed from PPA!${STY_RST}"
     fi
   fi
+
+  # Try distro repositories (PikaOS/derivatives may ship niri)
+  if ! command -v niri &>/dev/null; then
+    if apt-cache show niri &>/dev/null 2>&1; then
+      if sudo apt install $installflags niri 2>/dev/null; then
+        echo -e "${STY_GREEN}[$0]: Niri installed from distro repositories${STY_RST}"
+      fi
+    fi
+  fi
   
   # If still not installed, compile from source
   if ! command -v niri &>/dev/null; then
@@ -557,6 +566,17 @@ fi
 #####################################################################################
 if ! command -v xwayland-satellite &>/dev/null; then
   echo -e "${STY_BLUE}[$0]: Installing xwayland-satellite...${STY_RST}"
+
+  # Try distro repositories first
+  if apt-cache show xwayland-satellite &>/dev/null 2>&1; then
+    if sudo apt install $installflags xwayland-satellite 2>/dev/null; then
+      echo -e "${STY_GREEN}[$0]: xwayland-satellite installed from distro repositories${STY_RST}"
+    fi
+  fi
+
+  if command -v xwayland-satellite &>/dev/null; then
+    true
+  else
   
   # Install xwayland-satellite build dependencies
   sudo apt install $installflags \
@@ -579,6 +599,7 @@ if ! command -v xwayland-satellite &>/dev/null; then
     cd "${REPO_ROOT}"
     rm -rf "$XWSAT_BUILD_DIR"
   fi
+  fi
 fi
 
 #####################################################################################
@@ -587,7 +608,17 @@ fi
 echo -e "${STY_CYAN}[$0]: Installing Quickshell...${STY_RST}"
 
 if ! command -v qs &>/dev/null; then
-  echo -e "${STY_YELLOW}[$0]: Quickshell must be compiled from source.${STY_RST}"
+  # Try distro repositories first (PikaOS/derivatives may ship quickshell)
+  for pkg in quickshell quickshell-git; do
+    if apt-cache show "$pkg" &>/dev/null 2>&1; then
+      if sudo apt install $installflags "$pkg" 2>/dev/null; then
+        break
+      fi
+    fi
+  done
+
+  if ! command -v qs &>/dev/null; then
+    echo -e "${STY_YELLOW}[$0]: Quickshell must be compiled from source.${STY_RST}"
   
   # Install Quickshell build dependencies (from official BUILD.md)
   # https://github.com/quickshell-mirror/quickshell/blob/master/BUILD.md
@@ -677,6 +708,7 @@ if ! command -v qs &>/dev/null; then
     rm -rf "$QUICKSHELL_BUILD_DIR"
   else
     echo -e "${STY_RED}[$0]: Failed to clone Quickshell repository${STY_RST}"
+  fi
   fi
 else
   echo -e "${STY_GREEN}[$0]: Quickshell already installed.${STY_RST}"
