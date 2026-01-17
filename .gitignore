@@ -19,6 +19,9 @@ prompts/
 # WIP documentation (not for distribution)
 docs/*_IMPLEMENTATION.md
 docs/*_WIP.md
+**/PRECOMPILED-PACKAGES.md
+*-ANALYSIS.md
+*-INTERNAL.md
 
 # Python
 __pycache__/
