@@ -118,3 +118,4 @@ WindowDialogSectionHeader 1.0 WindowDialogSectionHeader.qml
 WindowDialogSeparator 1.0 WindowDialogSeparator.qml
 WindowDialogSlider 1.0 WindowDialogSlider.qml
 WindowDialogTitle 1.0 WindowDialogTitle.qml
+WallpaperCrossfader 1.0 WallpaperCrossfader.qml
