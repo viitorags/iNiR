@@ -18,14 +18,22 @@ Item {
     property real buttonPadding: 5
     property bool vertical: false
     property string dockPosition: "bottom"
+    property var parentWindow: null
 
     property Item lastHoveredButton
     property bool buttonHovered: false
     property bool contextMenuOpen: false
-    property bool requestDockShow: previewPopup.show || contextMenuOpen
+    property bool requestDockShow: dockPreviewPopup.visible || contextMenuOpen
     
     // Signal to close any open context menu before opening a new one
     signal closeAllContextMenus()
+    
+    // Function to show the new preview popup (Waffle-style)
+    function showPreviewPopup(appEntry: var, button: Item): void {
+        // Respect hoverPreview setting
+        if (Config.options?.dock?.hoverPreview === false) return
+        dockPreviewPopup.show(appEntry, button)
+    }
 
     Layout.fillHeight: !vertical
     Layout.fillWidth: vertical
@@ -276,194 +284,23 @@ Item {
             bottomInset: 0
             leftInset: 0
             rightInset: 0
-        }
-    }
-
-    PopupWindow {
-        id: previewPopup
-        property var appTopLevel: root.lastHoveredButton?.appToplevel
-        property bool allPreviewsReady: false
-        Connections {
-            target: root
-            function onLastHoveredButtonChanged() {
-                previewPopup.allPreviewsReady = false; // Reset readiness when the hovered button changes
-            } 
-        }
-        function updatePreviewReadiness() {
-            for(var i = 0; i < previewRowLayout.children.length; i++) {
-                const view = previewRowLayout.children[i];
-                if (view.hasContent === false) {
-                    allPreviewsReady = false;
-                    return;
-                }
+            
+            // Connect hover preview signals
+            onHoverPreviewRequested: {
+                root.showPreviewPopup(appToplevel, this)
             }
-            allPreviewsReady = true;
-        }
-        property bool shouldShow: {
-            const hoverConditions = (popupMouseArea.containsMouse || root.buttonHovered)
-            return hoverConditions && allPreviewsReady;
-        }
-        property bool show: false
-
-        onShouldShowChanged: {
-            if (shouldShow) {
-                // show = true;
-                updateTimer.restart();
-            } else {
-                updateTimer.restart();
-            }
-        }
-        Timer {
-            id: updateTimer
-            interval: 100
-            onTriggered: {
-                previewPopup.show = previewPopup.shouldShow
-            }
-        }
-        anchor {
-            window: root.QsWindow.window
-            adjustment: PopupAdjustment.None
-            gravity: Edges.Top | Edges.Right
-            edges: Edges.Top | Edges.Left
-
-        }
-        visible: popupBackground.visible
-        color: "transparent"
-        implicitWidth: root.QsWindow.window?.width ?? 1
-        implicitHeight: popupMouseArea.implicitHeight + root.windowControlsHeight + Appearance.sizes.elevationMargin * 2
-
-        MouseArea {
-            id: popupMouseArea
-            anchors.bottom: parent.bottom
-            implicitWidth: popupBackground.implicitWidth + Appearance.sizes.elevationMargin * 2
-            implicitHeight: root.maxWindowPreviewHeight + root.windowControlsHeight + Appearance.sizes.elevationMargin * 2
-            hoverEnabled: true
-            x: {
-                if (root.QsWindow && root.lastHoveredButton && root.lastHoveredButton.width > 0) {
-                    const itemCenter = root.QsWindow.mapFromItem(root.lastHoveredButton, root.lastHoveredButton.width / 2, 0);
-                    return itemCenter.x - width / 2;
-                }
-                return 0;
-            }
-            StyledRectangularShadow {
-                target: popupBackground
-                opacity: previewPopup.show ? 1 : 0
-                visible: opacity > 0
-                Behavior on opacity {
-                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                }
-            }
-            Rectangle {
-                id: popupBackground
-                property real padding: 5
-                opacity: previewPopup.show ? 1 : 0
-                visible: opacity > 0
-                Behavior on opacity {
-                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                }
-                clip: true
-                color: Appearance.auroraEverywhere ? Appearance.aurora.colPopupSurface : Appearance.colors.colSurfaceContainer
-                radius: Appearance.rounding.normal
-                anchors.bottom: parent.bottom
-                anchors.bottomMargin: Appearance.sizes.elevationMargin
-                anchors.horizontalCenter: parent.horizontalCenter
-                implicitHeight: previewRowLayout.implicitHeight + padding * 2
-                implicitWidth: previewRowLayout.implicitWidth + padding * 2
-                Behavior on implicitWidth {
-                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                }
-                Behavior on implicitHeight {
-                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                }
-
-                RowLayout {
-                    id: previewRowLayout
-                    anchors.centerIn: parent
-                    Repeater {
-                        model: ScriptModel {
-                            values: previewPopup.appTopLevel?.toplevels ?? []
-                        }
-                        RippleButton {
-                            id: windowButton
-                            required property var modelData
-                            padding: 0
-                            middleClickAction: () => {
-                                windowButton.modelData?.close();
-                            }
-                            onClicked: {
-                                if (CompositorService.isNiri) {
-                                    if (windowButton.modelData?.niriWindowId) {
-                                        NiriService.focusWindow(windowButton.modelData.niriWindowId)
-                                    } else if (windowButton.modelData?.activate) {
-                                        windowButton.modelData.activate()
-                                    }
-                                } else {
-                                    windowButton.modelData?.activate();
-                                }
-                            }
-                            contentItem: ColumnLayout {
-                                implicitWidth: screencopyView.implicitWidth
-                                implicitHeight: screencopyView.implicitHeight
-
-                                ButtonGroup {
-                                    contentWidth: parent.width - anchors.margins * 2
-                                    WrapperRectangle {
-                                        Layout.fillWidth: true
-                                        color: Appearance.auroraEverywhere ? "transparent" : ColorUtils.transparentize(Appearance.colors.colSurfaceContainer)
-                                        radius: Appearance.rounding.small
-                                        margin: 5
-                                        StyledText {
-                                            Layout.fillWidth: true
-                                            font.pixelSize: Appearance.font.pixelSize.small
-                                            text: windowButton.modelData?.title
-                                            elide: Text.ElideRight
-                                            color: Appearance.m3colors.m3onSurface
-                                        }
-                                    }
-                                    GroupButton {
-                                        id: closeButton
-                                        colBackground: Appearance.auroraEverywhere ? "transparent" : ColorUtils.transparentize(Appearance.colors.colSurfaceContainer)
-                                        baseWidth: windowControlsHeight
-                                        baseHeight: windowControlsHeight
-                                        buttonRadius: Appearance.rounding.full
-                                        contentItem: MaterialSymbol {
-                                            anchors.centerIn: parent
-                                            horizontalAlignment: Text.AlignHCenter
-                                            text: "close"
-                                            iconSize: Appearance.font.pixelSize.normal
-                                            color: Appearance.m3colors.m3onSurface
-                                        }
-                                        onClicked: {
-                                            windowButton.modelData?.close();
-                                        }
-                                    }
-                                }
-                                ScreencopyView {
-                                    id: screencopyView
-                                    // Evitar warnings cuando el compositor no soporta screencopy (ej. Niri)
-                                    captureSource: (CompositorService.isHyprland && previewPopup.show)
-                                                  ? windowButton.modelData
-                                                  : null
-                                    live: true
-                                    paintCursor: true
-                                    constraintSize: Qt.size(root.maxWindowPreviewWidth, root.maxWindowPreviewHeight)
-                                    onHasContentChanged: {
-                                        previewPopup.updatePreviewReadiness();
-                                    }
-                                    layer.enabled: true
-                                    layer.effect: OpacityMask {
-                                        maskSource: Rectangle {
-                                            width: screencopyView.width
-                                            height: screencopyView.height
-                                            radius: Appearance.rounding.small
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+            onHoverPreviewDismissed: {
+                dockPreviewPopup.close()
             }
         }
     }
+    
+    // New Waffle-style preview popup
+    DockPreview {
+        id: dockPreviewPopup
+        dockHovered: root.buttonHovered
+        dockPosition: root.dockPosition
+        anchor.window: root.parentWindow
+    }
+
 }

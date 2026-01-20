@@ -223,6 +223,7 @@ Scope {
                                     buttonPadding: dockRow.padding
                                     vertical: false
                                     dockPosition: root.position
+                                    parentWindow: dockRoot
                                 }
                                 DockButton {
                                     vertical: false
@@ -249,6 +250,7 @@ Scope {
                                     buttonPadding: dockColumn.padding
                                     vertical: true
                                     dockPosition: root.position
+                                    parentWindow: dockRoot
                                 }
                                 DockButton {
                                     vertical: true

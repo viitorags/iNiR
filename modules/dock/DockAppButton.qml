@@ -19,6 +19,22 @@ DockButton {
     property bool appIsActive: appToplevel.toplevels.find(t => (t.activated == true)) !== undefined
     property bool hasWindows: appToplevel.toplevels.length > 0
     
+    // Hover preview signals
+    signal hoverPreviewRequested()
+    signal hoverPreviewDismissed()
+    
+    // Timer for hover delay before showing preview
+    property alias hoverTimer: hoverDelayTimer
+    Timer {
+        id: hoverDelayTimer
+        interval: Config.options?.dock?.hoverPreviewDelay ?? 400
+        onTriggered: {
+            if (root.hasWindows && root.buttonHovered) {
+                root.hoverPreviewRequested()
+            }
+        }
+    }
+    
     // Determine focused window index for smart indicator (Niri only)
     // Returns the index (0-based) of the focused window sorted by column position
     property int focusedWindowIndex: {
@@ -105,9 +121,20 @@ DockButton {
             if (buttonHovered) {
                 appListRoot.lastHoveredButton = root
                 appListRoot.buttonHovered = true
-            } else if (appListRoot.lastHoveredButton === root) {
-                appListRoot.buttonHovered = false
+                // Start hover timer for preview
+                if (Config.options?.dock?.hoverPreview !== false) {
+                    hoverDelayTimer.restart()
+                }
+            } else {
+                if (appListRoot.lastHoveredButton === root) {
+                    appListRoot.buttonHovered = false
+                }
+                hoverDelayTimer.stop()
+                // Don't dismiss preview here - let the popup's timer handle it
+                // This allows mouse to move from button to popup without closing
             }
+        } else {
+            hoverDelayTimer.stop()
         }
     }
 
@@ -156,8 +183,14 @@ DockButton {
     }
 
     altAction: () => {
+        showContextMenu()
+    }
+
+    function showContextMenu() {
         root.appListRoot.closeAllContextMenus()
         root.appListRoot.contextMenuOpen = true
+        root.hoverPreviewDismissed()
+        hoverDelayTimer.stop()
         contextMenu.active = true
     }
 
@@ -186,7 +219,7 @@ DockButton {
             })).concat({ type: "separator" }) : []),
             // Launch new instance
             {
-                iconName: root.desktopEntry?.icon ?? "",
+                iconName: IconThemeService.smartIconName(root.desktopEntry?.icon ?? "", appToplevel.originalAppId ?? appToplevel.appId),
                 text: root.desktopEntry?.name ?? StringUtils.toTitleCase(appToplevel.originalAppId ?? appToplevel.appId),
                 monochromeIcon: false,
                 action: () => root.launchFromDesktopEntry()
