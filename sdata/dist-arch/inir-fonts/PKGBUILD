@@ -8,6 +8,8 @@ depends=(
   fontconfig
   ttf-dejavu
   ttf-liberation
+  ttf-roboto
+  ttf-roboto-mono
   
   # Launcher
   fuzzel
@@ -31,6 +33,7 @@ depends=(
 # ttf-jetbrains-mono-nerd
 # ttf-material-symbols-variable-git
 # ttf-readex-pro
+# ttf-roboto-flex (CRITICAL - default UI font)
 # ttf-rubik-vf
 # ttf-twemoji
 # adw-gtk-theme-git

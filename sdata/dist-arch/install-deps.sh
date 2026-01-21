@@ -164,6 +164,7 @@ AUR_PACKAGES=(
 CRITICAL_FONTS=(
   ttf-material-symbols-variable-git
   ttf-jetbrains-mono-nerd
+  ttf-roboto-flex
 )
 
 # Optional fonts (have system fallbacks)
