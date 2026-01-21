@@ -16,8 +16,8 @@ Scope {
     id: root
     property bool visible: false
     readonly property MprisPlayer activePlayer: MprisController.activePlayer
-    // Use MprisController.players directly - it already handles filtering
-    readonly property var meaningfulPlayers: MprisController.players
+    // Convert list to JS array for Repeater compatibility
+    readonly property var meaningfulPlayers: Array.from(MprisController.players)
     readonly property real osdWidth: Appearance.sizes.osdWidth
     readonly property real widgetWidth: Appearance.sizes.mediaControlsWidth
     readonly property real widgetHeight: Appearance.sizes.mediaControlsHeight
