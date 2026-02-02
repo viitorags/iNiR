@@ -509,6 +509,8 @@ Singleton {
                     property bool showDarkModeToggle: true
                     property bool showPerformanceProfileToggle: false
                     property bool showScreenRecord: false
+                    property bool showScreenCast: false
+                    property string screenCastOutput: "" // Output name for screen casting (e.g., "HDMI-A-1"), empty = auto-detect
                     property bool showNotepad: true
                 }
                 property JsonObject tray: JsonObject {
@@ -992,6 +994,7 @@ Singleton {
                 property bool pomodoro: false
                 property string theme: "freedesktop"
                 property bool notifications: false
+                property real volume: 0.5 // 0.0 to 1.0
             }
 
             property JsonObject time: JsonObject {
