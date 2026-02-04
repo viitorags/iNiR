@@ -939,7 +939,6 @@ ContentPage {
                     case "cards": return styles.cards ?? 3
                     case "aurora": return styles.aurora ?? 1
                     case "inir": return styles.inir ?? 1
-                    case "ink": return styles.ink ?? 1
                     default: return 1
                 }
             }
@@ -977,14 +976,6 @@ ContentPage {
                     return;
                 }
 
-                if (styleId === "ink") {
-                    Config.options.dock.cardStyle = false;
-                    Config.options.sidebar.cardStyle = false;
-                    Config.options.bar.cornerStyle = cornerStyle;
-                    Config.setNestedValue("appearance.transparency.enable", false)
-                    return;
-                }
-
                 // material
                 Config.options.dock.cardStyle = false;
                 Config.options.sidebar.cardStyle = false;
@@ -1006,15 +997,14 @@ ContentPage {
                         { displayName: Translation.tr("Material"), icon: "tune", value: "material" },
                         { displayName: Translation.tr("Cards"), icon: "branding_watermark", value: "cards" },
                         { displayName: Translation.tr("Aurora"), icon: "blur_on", value: "aurora" },
-                        { displayName: Translation.tr("Inir"), icon: "terminal", value: "inir" },
-                        { displayName: Translation.tr("Ink"), icon: "ink_pen", value: "ink" }
+                        { displayName: Translation.tr("Inir"), icon: "terminal", value: "inir" }
                     ]
                 }
             }
 
             StyledText {
                 Layout.fillWidth: true
-                text: Translation.tr("Material keeps the original surfaces. Cards enables rounded card containers everywhere. Aurora enables a wallpaper-tinted glass surface style across panels. Inir uses a TUI-inspired dark theme with accent-colored borders. Ink is a low-noise, typographic style with softened borders and interactions.")
+                text: Translation.tr("Material keeps the original surfaces. Cards enables rounded card containers everywhere. Aurora enables a wallpaper-tinted glass surface style across panels. Inir uses a TUI-inspired dark theme with accent-colored borders.")
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.smaller
                 wrapMode: Text.WordWrap
