@@ -143,7 +143,11 @@ reload_terminal_colors() {
         ;;
       wezterm)
         # WezTerm: auto-reloads on config change (built-in file watcher)
-        echo "[terminal-colors] WezTerm: auto-reloads on config change"
+        # Touch config to ensure watcher triggers
+        if pgrep -x wezterm &>/dev/null && [ -f "$home/.config/wezterm/wezterm.lua" ]; then
+          touch "$home/.config/wezterm/wezterm.lua" 2>/dev/null
+          echo "[terminal-colors] WezTerm: touched config to trigger auto-reload"
+        fi
         ;;
       ghostty)
         # Ghostty: reload config via SIGUSR1
@@ -153,8 +157,18 @@ reload_terminal_colors() {
         fi
         ;;
       konsole)
-        # Konsole: no live reload mechanism, colors apply on new tab/session
-        echo "[terminal-colors] Konsole: colors will apply on next new tab/session"
+        # Konsole: Use qdbus to reload profile if available
+        if pgrep -x konsole &>/dev/null; then
+          # Try to reload via DBus (works in some versions)
+          if command -v qdbus6 &>/dev/null; then
+            for session in $(qdbus6 org.kde.konsole 2>/dev/null | grep -E '/Sessions/[0-9]+$'); do
+              qdbus6 org.kde.konsole "$session" org.kde.konsole.Session.setProfile "ii-auto" 2>/dev/null
+            done
+            echo "[terminal-colors] Konsole: attempted profile reload via DBus"
+          else
+            echo "[terminal-colors] Konsole: colors will apply on next new tab/session"
+          fi
+        fi
         ;;
     esac
   done

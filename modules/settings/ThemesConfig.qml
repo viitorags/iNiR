@@ -826,6 +826,21 @@ ContentPage {
                 }
             }
 
+            ConfigRow {
+                uniform: true
+                visible: Config.options?.appearance?.wallpaperTheming?.enableTerminal ?? true
+
+                ConfigSwitch {
+                    buttonIcon: "rocket_launch"
+                    text: "Starship"
+                    checked: Config.options?.appearance?.wallpaperTheming?.terminals?.starship ?? true
+                    onCheckedChanged: Config.setNestedValue("appearance.wallpaperTheming.terminals.starship", checked)
+                    StyledToolTip {
+                        text: Translation.tr("Starship prompt palette - use 'palette = \"ii\"' in starship.toml")
+                    }
+                }
+            }
+
             // Auto-detect button
             RippleButton {
                 Layout.alignment: Qt.AlignRight
@@ -861,7 +876,7 @@ ContentPage {
                     command: [
                         "/usr/bin/bash",
                         "-c",
-                        "for term in kitty alacritty foot wezterm ghostty konsole; do " +
+                        "for term in kitty alacritty foot wezterm ghostty konsole starship; do " +
                         "if command -v $term &>/dev/null; then echo \"$term:true\"; " +
                         "else echo \"$term:false\"; fi; done"
                     ]
@@ -1027,6 +1042,48 @@ ContentPage {
                     brightnessSpinBox.value = 55;  // 0.55 * 100
                     harmonySpinBox.value = 15;     // 0.15 * 100
                     // Note: ThemeService.regenerateAutoTheme() is called by onValueChanged
+                }
+            }
+
+            // Apply Now button - triggers terminal color application to all open terminals
+            RippleButton {
+                Layout.alignment: Qt.AlignRight
+                Layout.topMargin: 4
+                visible: Config.options?.appearance?.wallpaperTheming?.enableTerminal ?? true
+                implicitWidth: applyNowRow.implicitWidth + 20
+                implicitHeight: 36
+                buttonRadius: Appearance.rounding.small
+                colBackground: Appearance.colors.colPrimaryContainer
+                colBackgroundHover: Appearance.colors.colPrimaryContainerHover
+                colRipple: Appearance.colors.colPrimaryContainerActive
+
+                contentItem: RowLayout {
+                    id: applyNowRow
+                    anchors.centerIn: parent
+                    spacing: 8
+
+                    MaterialSymbol {
+                        text: "sync"
+                        iconSize: 16
+                        color: Appearance.colors.colOnPrimaryContainer
+                    }
+
+                    StyledText {
+                        text: Translation.tr("Apply to open terminals")
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        color: Appearance.colors.colOnPrimaryContainer
+                    }
+                }
+
+                onClicked: applyTerminalColorsProcess.running = true
+
+                StyledToolTip {
+                    text: Translation.tr("Apply current colors to all open terminal windows without restarting them")
+                }
+
+                Process {
+                    id: applyTerminalColorsProcess
+                    command: ["/usr/bin/bash", Directories.scriptPath + "/colors/applycolor.sh"]
                 }
             }
         }
