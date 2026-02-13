@@ -22,9 +22,27 @@ Singleton {
     // Transparency. The quadratic functions were derived from analysis of hand-picked transparency values.
     ColorQuantizer {
         id: wallColorQuant
-        property string wallpaperPath: Config.options?.background?.wallpaperPath ?? ""
+        property string wallpaperPath: {
+            const useBackdrop = Config.options?.appearance?.wallpaperTheming?.useBackdropForColors ?? false
+            if (useBackdrop) {
+                const bd = Config.options?.background?.backdrop ?? {}
+                const useMain = bd.useMainWallpaper ?? true
+                if (!useMain && bd.wallpaperPath) return bd.wallpaperPath
+            }
+            return Config.options?.background?.wallpaperPath ?? ""
+        }
         property bool wallpaperIsVideo: wallpaperPath.endsWith(".mp4") || wallpaperPath.endsWith(".webm") || wallpaperPath.endsWith(".mkv") || wallpaperPath.endsWith(".avi") || wallpaperPath.endsWith(".mov")
-        source: Qt.resolvedUrl(wallpaperIsVideo ? (Config.options?.background?.thumbnailPath ?? "") : (Config.options?.background?.wallpaperPath ?? ""))
+        property string _videoImageSource: {
+            if (!wallpaperIsVideo) return ""
+            const _dep = Wallpapers.videoFirstFrames // reactive binding
+            const ff = Wallpapers.getVideoFirstFramePath(wallpaperPath)
+            if (ff) return ff
+            const thumb = Config.options?.background?.thumbnailPath ?? ""
+            if (thumb) return thumb
+            if (wallpaperPath) Wallpapers.ensureVideoFirstFrame(wallpaperPath)
+            return ""
+        }
+        source: Qt.resolvedUrl(wallpaperIsVideo ? _videoImageSource : wallpaperPath)
         depth: 0 // 2^0 = 1 color
         rescaleSize: 10
     }

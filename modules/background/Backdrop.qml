@@ -51,12 +51,38 @@ Variants {
         readonly property real auroraOverlayOpacity: iiBackdrop.auroraOverlayOpacity ?? 0.38
         readonly property bool enableAnimation: iiBackdrop.enableAnimation ?? false
 
+        // Per-monitor main wallpaper path (resolves per-monitor when multi-monitor enabled)
+        readonly property string _perMonitorMainPath: {
+            if (WallpaperListener.multiMonitorEnabled) {
+                const monName = WallpaperListener.getMonitorName(backdropWindow.modelData)
+                const data = WallpaperListener.effectivePerMonitor[monName]
+                if (data && data.path) return data.path
+            }
+            return Config.options?.background?.wallpaperPath ?? ""
+        }
+
+        // Per-monitor backdrop path (if multi-monitor enabled and monitor has custom backdrop)
+        readonly property string _perMonitorBackdropPath: {
+            if (WallpaperListener.multiMonitorEnabled) {
+                const monName = WallpaperListener.getMonitorName(backdropWindow.modelData)
+                const data = WallpaperListener.effectivePerMonitor[monName]
+                if (data && data.backdropPath) return data.backdropPath
+            }
+            return ""
+        }
+
         // Raw wallpaper path (before thumbnail substitution)
         readonly property string wallpaperPathRaw: {
             const useMain = iiBackdrop.useMainWallpaper ?? true;
-            const mainPath = Config.options?.background?.wallpaperPath ?? "";
-            const backdropPath = iiBackdrop.wallpaperPath || "";
-            return useMain ? mainPath : (backdropPath || mainPath);
+            const mainPath = _perMonitorMainPath;
+            // Per-monitor backdrop takes priority, then global backdrop, then main wallpaper
+            if (!useMain) {
+                const perMonBd = _perMonitorBackdropPath
+                if (perMonBd) return perMonBd
+                const globalBd = iiBackdrop.wallpaperPath || ""
+                if (globalBd) return globalBd
+            }
+            return mainPath;
         }
         
         readonly property bool wallpaperIsVideo: {
@@ -68,32 +94,30 @@ Variants {
             return wallpaperPathRaw.toLowerCase().endsWith(".gif");
         }
 
-        // Effective path: returns thumbnail if animation is disabled, otherwise raw path
-        readonly property string effectiveWallpaperPath: {
-            const selectedPath = wallpaperPathRaw;
-            
-            // If animation is enabled, use raw path for videos/GIFs
-            if (backdropWindow.enableAnimation && (backdropWindow.wallpaperIsVideo || backdropWindow.wallpaperIsGif)) {
-                return selectedPath;
+        readonly property string effectiveWallpaperPath: wallpaperPathRaw
+
+        // For ColorQuantizer: needs an image source (can't decode video files)
+        // Uses first-frame cache for videos, config thumbnail as fallback
+        readonly property string colorSourcePath: {
+            if (wallpaperIsVideo) {
+                const _dep = Wallpapers.videoFirstFrames // reactive binding
+                const ff = Wallpapers.getVideoFirstFramePath(wallpaperPathRaw)
+                if (ff) return ff
+                const configThumb = Config.options?.background?.thumbnailPath ?? ""
+                if (configThumb) return configThumb
+                Wallpapers.ensureVideoFirstFrame(wallpaperPathRaw)
+                return ""
             }
-            
-            // If animation is disabled, use thumbnail for videos/GIFs
-            if (backdropWindow.wallpaperIsVideo || backdropWindow.wallpaperIsGif) {
-                const backdropThumbnail = iiBackdrop.thumbnailPath ?? "";
-                const mainThumbnail = Config.options?.background?.thumbnailPath ?? "";
-                return backdropThumbnail || mainThumbnail || selectedPath;
-            }
-            
-            return selectedPath;
+            return wallpaperPathRaw
         }
 
         // Color quantizer for aurora-style adaptive colors
         ColorQuantizer {
             id: backdropColorQuantizer
-            source: backdropWindow.effectiveWallpaperPath 
-                ? (backdropWindow.effectiveWallpaperPath.startsWith("file://") 
-                    ? backdropWindow.effectiveWallpaperPath 
-                    : "file://" + backdropWindow.effectiveWallpaperPath)
+            source: backdropWindow.colorSourcePath 
+                ? (backdropWindow.colorSourcePath.startsWith("file://") 
+                    ? backdropWindow.colorSourcePath 
+                    : "file://" + backdropWindow.colorSourcePath)
                 : ""
             depth: 0
             rescaleSize: 10
@@ -107,12 +131,12 @@ Variants {
         Item {
             anchors.fill: parent
 
-            // Static Image (for non-animated wallpapers)
+            // Static Image (non-GIF, non-video images only)
             Image {
                 id: wallpaper
                 anchors.fill: parent
                 fillMode: Image.PreserveAspectCrop
-                source: backdropWindow.effectiveWallpaperPath && !backdropWindow.wallpaperIsGif && !(backdropWindow.enableAnimation && backdropWindow.wallpaperIsVideo)
+                source: backdropWindow.effectiveWallpaperPath && !backdropWindow.wallpaperIsGif && !backdropWindow.wallpaperIsVideo
                     ? (backdropWindow.effectiveWallpaperPath.startsWith("file://") 
                         ? backdropWindow.effectiveWallpaperPath 
                         : "file://" + backdropWindow.effectiveWallpaperPath)
@@ -121,37 +145,35 @@ Variants {
                 cache: true
                 smooth: true
                 mipmap: true
-                visible: !backdropWindow.useAuroraStyle && !backdropWindow.wallpaperIsGif && !(backdropWindow.enableAnimation && backdropWindow.wallpaperIsVideo)
+                visible: !backdropWindow.useAuroraStyle && !backdropWindow.wallpaperIsGif && !backdropWindow.wallpaperIsVideo
 
-                layer.enabled: Appearance.effectsEnabled && backdropWindow.backdropBlurRadius > 0 && !backdropWindow.useAuroraStyle && !backdropWindow.wallpaperIsGif
+                layer.enabled: Appearance.effectsEnabled && backdropWindow.backdropBlurRadius > 0 && !backdropWindow.useAuroraStyle
                 layer.effect: MultiEffect {
                     blurEnabled: true
-                    // For videos/GIFs (when using thumbnails), apply thumbnailBlurStrength
-                    blur: (backdropWindow.wallpaperIsVideo || backdropWindow.wallpaperIsGif)
-                        ? (backdropWindow.backdropBlurRadius * Math.max(0, Math.min(1, backdropWindow.thumbnailBlurStrength / 100))) / 100.0
-                        : backdropWindow.backdropBlurRadius / 100.0
+                    blur: backdropWindow.backdropBlurRadius / 100.0
                     blurMax: 64
                     saturation: backdropWindow.backdropSaturation
                     contrast: backdropWindow.backdropContrast
                 }
             }
             
-            // Animated GIF support (when enableAnimation is true)
+            // Animated GIF wallpaper
+            // Always loaded for GIFs: plays when animation enabled, frozen (first frame) when disabled
             AnimatedImage {
                 id: gifWallpaper
                 anchors.fill: parent
                 fillMode: Image.PreserveAspectCrop
-                source: backdropWindow.enableAnimation && backdropWindow.wallpaperIsGif && backdropWindow.effectiveWallpaperPath
-                    ? (backdropWindow.effectiveWallpaperPath.startsWith("file://")
-                        ? backdropWindow.effectiveWallpaperPath
-                        : "file://" + backdropWindow.effectiveWallpaperPath)
+                source: backdropWindow.wallpaperIsGif && backdropWindow.wallpaperPathRaw
+                    ? (backdropWindow.wallpaperPathRaw.startsWith("file://")
+                        ? backdropWindow.wallpaperPathRaw
+                        : "file://" + backdropWindow.wallpaperPathRaw)
                     : ""
                 asynchronous: true
                 cache: true
                 smooth: true
                 mipmap: true
-                visible: !backdropWindow.useAuroraStyle && backdropWindow.enableAnimation && backdropWindow.wallpaperIsGif
-                playing: visible
+                visible: !backdropWindow.useAuroraStyle && backdropWindow.wallpaperIsGif
+                playing: visible && backdropWindow.enableAnimation
 
                 layer.enabled: Appearance.effectsEnabled && backdropWindow.enableAnimatedBlur && backdropWindow.backdropBlurRadius > 0
                 layer.effect: MultiEffect {
@@ -163,14 +185,15 @@ Variants {
                 }
             }
 
-            // Video wallpaper support (when enableAnimation is true)
+            // Video wallpaper
+            // Always loaded for videos: plays when animation enabled, frozen (paused) when disabled
             Video {
                 id: videoWallpaper
                 anchors.fill: parent
-                visible: !backdropWindow.useAuroraStyle && backdropWindow.enableAnimation && backdropWindow.wallpaperIsVideo
+                visible: !backdropWindow.useAuroraStyle && backdropWindow.wallpaperIsVideo
                 source: {
-                    if (!backdropWindow.enableAnimation || !backdropWindow.wallpaperIsVideo) return "";
-                    const path = backdropWindow.effectiveWallpaperPath;
+                    if (!backdropWindow.wallpaperIsVideo) return "";
+                    const path = backdropWindow.wallpaperPathRaw;
                     if (!path) return "";
                     return path.startsWith("file://") ? path : ("file://" + path);
                 }
@@ -179,15 +202,28 @@ Variants {
                 muted: true
                 autoPlay: true
 
+                readonly property bool shouldPlay: backdropWindow.enableAnimation
+
                 onPlaybackStateChanged: {
-                    if (playbackState === MediaPlayer.StoppedState && visible && backdropWindow.enableAnimation && backdropWindow.wallpaperIsVideo) {
+                    if (playbackState === MediaPlayer.PlayingState && !shouldPlay) {
+                        pause()
+                    }
+                    if (playbackState === MediaPlayer.StoppedState && visible && shouldPlay) {
                         play()
                     }
                 }
 
+                onShouldPlayChanged: {
+                    if (visible && backdropWindow.wallpaperIsVideo) {
+                        if (shouldPlay) play()
+                        else pause()
+                    }
+                }
+
                 onVisibleChanged: {
-                    if (visible && backdropWindow.enableAnimation && backdropWindow.wallpaperIsVideo) {
-                        play()
+                    if (visible && backdropWindow.wallpaperIsVideo) {
+                        if (shouldPlay) play()
+                        else pause()
                     } else {
                         pause()
                     }
@@ -213,7 +249,7 @@ Variants {
                 cache: true
                 smooth: true
                 mipmap: true
-                visible: backdropWindow.useAuroraStyle && status === Image.Ready && !backdropWindow.wallpaperIsGif && !(backdropWindow.enableAnimation && backdropWindow.wallpaperIsVideo)
+                visible: backdropWindow.useAuroraStyle && status === Image.Ready && !backdropWindow.wallpaperIsGif && !backdropWindow.wallpaperIsVideo
 
                 layer.enabled: Appearance.effectsEnabled
                 layer.effect: StyledBlurEffect {
@@ -221,18 +257,18 @@ Variants {
                 }
             }
             
-            // Aurora-style for GIFs (without blur to maintain performance)
+            // Aurora-style for GIFs
             AnimatedImage {
                 id: auroraGifWallpaper
                 anchors.fill: parent
                 fillMode: Image.PreserveAspectCrop
-                source: backdropWindow.enableAnimation && backdropWindow.wallpaperIsGif ? gifWallpaper.source : ""
+                source: backdropWindow.wallpaperIsGif ? gifWallpaper.source : ""
                 asynchronous: true
                 cache: true
                 smooth: true
                 mipmap: true
-                visible: backdropWindow.useAuroraStyle && backdropWindow.enableAnimation && backdropWindow.wallpaperIsGif
-                playing: visible
+                visible: backdropWindow.useAuroraStyle && backdropWindow.wallpaperIsGif
+                playing: visible && backdropWindow.enableAnimation
 
                 layer.enabled: Appearance.effectsEnabled && backdropWindow.enableAnimatedBlur
                 layer.effect: StyledBlurEffect {
@@ -240,26 +276,39 @@ Variants {
                 }
             }
 
-            // Aurora-style for Videos (without blur to maintain performance)
+            // Aurora-style for Videos
             Video {
                 id: auroraVideoWallpaper
                 anchors.fill: parent
-                visible: backdropWindow.useAuroraStyle && backdropWindow.enableAnimation && backdropWindow.wallpaperIsVideo
+                visible: backdropWindow.useAuroraStyle && backdropWindow.wallpaperIsVideo
                 source: videoWallpaper.source
                 fillMode: VideoOutput.PreserveAspectCrop
                 loops: MediaPlayer.Infinite
                 muted: true
                 autoPlay: true
 
+                readonly property bool shouldPlay: backdropWindow.enableAnimation
+
                 onPlaybackStateChanged: {
-                    if (playbackState === MediaPlayer.StoppedState && visible && backdropWindow.enableAnimation && backdropWindow.wallpaperIsVideo) {
+                    if (playbackState === MediaPlayer.PlayingState && !shouldPlay) {
+                        pause()
+                    }
+                    if (playbackState === MediaPlayer.StoppedState && visible && shouldPlay) {
                         play()
                     }
                 }
 
+                onShouldPlayChanged: {
+                    if (visible && backdropWindow.wallpaperIsVideo) {
+                        if (shouldPlay) play()
+                        else pause()
+                    }
+                }
+
                 onVisibleChanged: {
-                    if (visible && backdropWindow.enableAnimation && backdropWindow.wallpaperIsVideo) {
-                        play()
+                    if (visible && backdropWindow.wallpaperIsVideo) {
+                        if (shouldPlay) play()
+                        else pause()
                     } else {
                         pause()
                     }
