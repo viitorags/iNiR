@@ -217,6 +217,32 @@ set_wallpaper_path() {
     fi
 }
 
+set_wallpaper_path_per_monitor() {
+    local path="$1"
+    local monitor="$2"
+    local startWs="${3:-1}"
+    local endWs="${4:-10}"
+
+    if [ -f "$SHELL_CONFIG_FILE" ]; then
+        # Use jq to update wallpapersByMonitor array
+        # Remove existing entry for this monitor, then add new entry
+        jq --arg monitor "$monitor" \
+           --arg path "$path" \
+           --argjson startWs "${startWs:-1}" \
+           --argjson endWs "${endWs:-10}" \
+           '.background.wallpapersByMonitor = (
+               (.background.wallpapersByMonitor // []) |
+               map(select(.monitor != $monitor)) +
+               [{
+                   "monitor": $monitor,
+                   "path": $path,
+                   "workspaceFirst": $startWs,
+                   "workspaceLast": $endWs
+               }]
+           )' "$SHELL_CONFIG_FILE" > "$SHELL_CONFIG_FILE.tmp" && mv "$SHELL_CONFIG_FILE.tmp" "$SHELL_CONFIG_FILE"
+    fi
+}
+
 set_thumbnail_path() {
     local path="$1"
     if [ -f "$SHELL_CONFIG_FILE" ]; then
@@ -237,6 +263,14 @@ switch() {
     type_flag="$3"
     color_flag="$4"
     color="$5"
+
+    # Per-monitor wallpaper changes: only update config, skip color generation
+    # Global theme colors should only change from global wallpaper changes
+    if [[ -n "$monitor_name" && -n "$imgpath" ]]; then
+        set_wallpaper_path_per_monitor "$imgpath" "$monitor_name" "$start_workspace" "$end_workspace"
+        echo "[switchwall.sh] Per-monitor wallpaper set for $monitor_name, skipping global color generation"
+        return
+    fi
 
     # Start Gemini auto-categorization if enabled
     aiStylingEnabled=$(jq -r '.background.clock.cookie.aiStyling' "$SHELL_CONFIG_FILE")
@@ -269,8 +303,18 @@ switch() {
         generate_colors_material_args=(--color "$color")
     else
         if [[ -z "$imgpath" ]]; then
-            echo 'Aborted'
-            exit 0
+            if [[ -n "$noswitch_flag" ]]; then
+                # --noswitch without --image: read current wallpaper from config for color regeneration
+                imgpath=$(jq -r '.background.wallpaperPath // ""' "$SHELL_CONFIG_FILE" 2>/dev/null)
+                if [[ -z "$imgpath" || ! -f "$imgpath" ]]; then
+                    echo "[switchwall.sh] --noswitch: No valid wallpaper path in config"
+                    exit 0
+                fi
+                echo "[switchwall.sh] --noswitch: Using current wallpaper for color regeneration: $imgpath"
+            else
+                echo 'Aborted'
+                exit 0
+            fi
         fi
 
         check_and_prompt_upscale "$imgpath" &
@@ -311,7 +355,7 @@ switch() {
 
             # Set wallpaper path (Qt Multimedia Video component will handle playback)
             set_wallpaper_path "$imgpath"
-            
+
             # Set thumbnail path (used for color generation and as fallback)
             set_thumbnail_path "$thumbnail"
 
@@ -347,6 +391,40 @@ switch() {
             generate_colors_material_args+=(--mode "$mode_flag")
         fi
     fi
+    # If useBackdropForColors is enabled, override color source to use backdrop wallpaper
+    # Respects active panel family: ii reads from background.backdrop, waffle from waffles.background.backdrop
+    if [[ "$color_flag" != "1" ]]; then
+        use_backdrop_colors=$(jq -r '.appearance.wallpaperTheming.useBackdropForColors // false' "$SHELL_CONFIG_FILE" 2>/dev/null)
+        if [[ "$use_backdrop_colors" == "true" ]]; then
+            local panel_family=$(jq -r '.panelFamily // "ii"' "$SHELL_CONFIG_FILE" 2>/dev/null)
+            local backdrop_use_main=""
+            local backdrop_path=""
+
+            if [[ "$panel_family" == "waffle" ]]; then
+                backdrop_use_main=$(jq -r '.waffles.background.backdrop.useMainWallpaper // true' "$SHELL_CONFIG_FILE" 2>/dev/null)
+                backdrop_path=$(jq -r '.waffles.background.backdrop.wallpaperPath // ""' "$SHELL_CONFIG_FILE" 2>/dev/null)
+            else
+                backdrop_use_main=$(jq -r '.background.backdrop.useMainWallpaper // true' "$SHELL_CONFIG_FILE" 2>/dev/null)
+                backdrop_path=$(jq -r '.background.backdrop.wallpaperPath // ""' "$SHELL_CONFIG_FILE" 2>/dev/null)
+            fi
+
+            if [[ "$backdrop_use_main" != "true" && -n "$backdrop_path" && -f "$backdrop_path" ]]; then
+                echo "[switchwall.sh] Using backdrop wallpaper for color generation ($panel_family): $backdrop_path"
+                # Check if backdrop is a video - use its thumbnail instead
+                if is_video "$backdrop_path"; then
+                    local backdrop_thumb="$THUMBNAIL_DIR/$(basename "$backdrop_path").jpg"
+                    if [[ -f "$backdrop_thumb" ]]; then
+                        matugen_args=(image "$backdrop_thumb")
+                        generate_colors_material_args=(--path "$backdrop_thumb")
+                    fi
+                else
+                    matugen_args=(image "$backdrop_path")
+                    generate_colors_material_args=(--path "$backdrop_path")
+                fi
+            fi
+        fi
+    fi
+
     [[ -n "$type_flag" ]] && matugen_args+=(--type "$type_flag") && generate_colors_material_args+=(--scheme "$type_flag")
     generate_colors_material_args+=(--termscheme "$terminalscheme" --blend_bg_fg)
     generate_colors_material_args+=(--cache "$STATE_DIR/user/generated/color.txt")
@@ -472,6 +550,18 @@ main() {
                 noswitch_flag="1"
                 imgpath=$(jq -r '.background.wallpaperPath' "$SHELL_CONFIG_FILE" 2>/dev/null || echo "")
                 shift
+                ;;
+            --monitor)
+                monitor_name="$2"
+                shift 2
+                ;;
+            --start-workspace)
+                start_workspace="$2"
+                shift 2
+                ;;
+            --end-workspace)
+                end_workspace="$2"
+                shift 2
                 ;;
             *)
                 if [[ -z "$imgpath" ]]; then
