@@ -5,6 +5,36 @@ All notable changes to iNiR will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.0] - 2026-02-13
+
+### Added
+- **Multi-monitor wallpaper support**: Per-monitor wallpaper and backdrop paths via WallpaperListener service
+- **Video first-frame system**: Automatic ffmpeg extraction and caching of first-frame JPGs for video wallpapers
+- **Per-monitor aurora/glass**: Bar, dock, and sidebars use per-screen wallpaper for blur and color quantization
+- **Wallpaper selector multi-monitor targeting**: Auto-detects focused monitor, opens on target screen, per-monitor selection
+- **Per-monitor backdrop paths**: Each monitor can have its own backdrop wallpaper independent of global setting
+- **Derive theme colors from backdrop**: New toggle in settings — all color generation sources (matugen, ColorQuantizer, aurora) switch to backdrop wallpaper when enabled
+- **Card right-click swap**: Right-click on the front card toggles between main wallpaper and backdrop views
+- **Backdrop card focus borders**: Selection border overlay when backdrop card is in front and selected
+- **DockPreview toplevel reactivity**: Auto-close preview when app exits, update on toplevel changes
+- **Per-monitor random wallpapers**: Random wallpaper scripts (konachan, osu) support focused monitor targeting
+
+### Changed
+- **Card clipping**: Parent-level `layer.enabled + OpacityMask` replaces per-image masking — all children (gradients, labels, badges) now properly clip to rounded corners
+- **Card scaling quality**: `layer.smooth` on scaled cards for sharper text and badges when zoomed out
+- **Video/GIF display**: Always load AnimatedImage for GIFs (frozen when animation disabled); replaced QtMultimedia Video with first-frame Image in previews
+- **Color pipeline**: ColorQuantizer and effectiveWallpaperUrl return image-safe sources for videos (first-frame cache → config thumbnail → trigger generation)
+- **switchwall.sh**: Per-monitor wallpaper changes skip global color regeneration; `--noswitch` reads current wallpaper from config
+- **CryptoWidget**: Cache staleness check — only refresh if older than refreshInterval (default 300s)
+- **WaffleConfig**: Use `Config.setNestedValue()` instead of direct property mutation
+
+### Fixed
+- **Black peaks on cards**: Gradient and label overlays no longer escape rounded corners (`clip:true` only clips rectangular)
+- **Aurora colors for video wallpapers**: ColorQuantizer receives first-frame images instead of undecoded video URLs
+- **Backdrop changes all monitors**: Per-monitor backdrop selection now only affects the selected monitor
+- **White line above wallpaper path**: Removed hardcoded separator — `Layout.topMargin` provides sufficient spacing
+- **Derive theme colors noop**: Toggle now wires through to Appearance.qml ColorQuantizer, Wallpapers.effectiveWallpaperPath, and switchwall.sh matugen source
+
 ## [2.9.1] - 2026-02-11
 
 ### Added
