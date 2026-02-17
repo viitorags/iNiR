@@ -15,15 +15,6 @@ Singleton {
     property string defaultWallpaperPath: ""
     property string welcomeQmlPath: FileUtils.trimFileProtocol(Quickshell.shellPath("welcome.qml"))
 
-    function pickRandomWallpaper(): string {
-        const wallDir = FileUtils.trimFileProtocol(`${Directories.assetsPath}/wallpapers`)
-        const extensions = [".png", ".jpg", ".jpeg", ".webp"]
-        let candidates = []
-        // Use FolderListModel results aren't available synchronously,
-        // so we use a shell one-liner to list wallpapers
-        return wallDir  // placeholder, actual pick happens in listWallpapersProc
-    }
-
     function load() {
         listWallpapersProc.running = true
     }
