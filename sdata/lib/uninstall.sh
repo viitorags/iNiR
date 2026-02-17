@@ -409,11 +409,26 @@ uninstall_handle_shared_configs() {
 
         # In interactive mode, ask user
         if $ask; then
-            local default_choice="yes"
-            [[ "$recommendation" == "remove" ]] && default_choice="no"
-
             echo -e "  ${STY_CYAN}$desc${STY_RST} $reason"
-            if tui_confirm "    Keep this config?" "$default_choice"; then
+
+            # Default to KEEP for essential/optional, REMOVE for inir_default
+            local keep_default=true
+            [[ "$level" == "inir_default" ]] && keep_default=false
+
+            local user_wants_keep=$keep_default
+            if tui_confirm "    Keep this config?" "yes" 2>/dev/null; then
+                user_wants_keep=true
+            else
+                # tui_confirm returned false — could be user said "no" OR TTY failed
+                # If TTY failed, default to KEEP (safe)
+                if ! tty -s 2>/dev/null; then
+                    user_wants_keep=$keep_default
+                else
+                    user_wants_keep=false
+                fi
+            fi
+
+            if $user_wants_keep; then
                 echo -e "    ${STY_YELLOW}⊘${STY_RST} Keeping"
                 ((kept++))
             else
@@ -670,6 +685,15 @@ run_uninstall() {
     tui_title "iNiR Uninstaller"
     echo ""
 
+    # Safety: if no TTY available, force non-interactive safe mode
+    # This prevents catastrophic removal when piped or run via SSH
+    if $ask && ! tty -s 2>/dev/null; then
+        echo -e "${STY_YELLOW}No interactive terminal detected — using safe mode${STY_RST}"
+        echo -e "${STY_FAINT}(All shared configs will be preserved. Use -y flag for non-interactive uninstall.)${STY_RST}"
+        echo ""
+        ask=false
+    fi
+
     # Check if installed
     if [[ ! -f "${XDG_CONFIG_HOME}/illogical-impulse/installed_true" ]] && \
        [[ ! -d "${XDG_CONFIG_HOME}/quickshell/ii" ]]; then
@@ -716,10 +740,14 @@ run_uninstall() {
     echo "  • System packages will NOT be removed automatically"
     echo ""
 
-    # Confirm
-    if ! tui_confirm "Continue with uninstall?" "no"; then
-        echo "Cancelled."
-        return 0
+    # Confirm — in non-interactive mode (-y), skip confirmation
+    if $ask; then
+        if ! tui_confirm "Continue with uninstall?" "no"; then
+            echo "Cancelled."
+            return 0
+        fi
+    else
+        echo -e "${STY_CYAN}Non-interactive mode: proceeding with safe uninstall...${STY_RST}"
     fi
 
     echo ""
@@ -742,11 +770,14 @@ run_uninstall() {
     # Handle quickshell shared resources
     uninstall_handle_quickshell_shared
 
-    # Show manual steps
-    uninstall_show_manual_steps
-
-    # Show package info with smart recommendations
-    uninstall_show_packages
+    # Show manual steps (interactive only — don't overwhelm non-interactive output)
+    if $ask; then
+        uninstall_show_manual_steps
+        uninstall_show_packages
+    else
+        echo ""
+        echo -e "${STY_FAINT}Run './setup uninstall' interactively for package removal guidance.${STY_RST}"
+    fi
 
     # Final message
     echo ""
@@ -771,7 +802,7 @@ EOF
     echo -e "  cp -r $backup_dir/quickshell-ii ${XDG_CONFIG_HOME}/quickshell/ii"
     echo ""
     echo -e "${STY_FAINT}To reinstall iNiR:${STY_RST}"
-    echo -e "  git clone https://github.com/anomalyco/inir && cd inir && ./setup install"
+    echo -e "  git clone https://github.com/snowarch/inir.git && cd inir && ./setup install"
     echo ""
 }
 

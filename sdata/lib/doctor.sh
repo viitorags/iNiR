@@ -394,8 +394,11 @@ check_wallpaper_health() {
     
     local zero_byte=0
     local fixed=0
-    for f in "$wallpaper_dir"/*.{jpg,jpeg,png,webp} 2>/dev/null; do
-        [[ ! -f "$f" ]] && continue
+    local _wp_files=()
+    while IFS= read -r -d '' f; do
+        _wp_files+=("$f")
+    done < <(find "$wallpaper_dir" -maxdepth 1 -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" \) -print0 2>/dev/null)
+    for f in "${_wp_files[@]}"; do
         if [[ ! -s "$f" ]]; then
             ((zero_byte++)) || true
             # Try to restore from assets
