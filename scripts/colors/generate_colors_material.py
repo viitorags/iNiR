@@ -236,7 +236,11 @@ if args.termscheme is not None:
         json_termscheme = f.read()
     term_source_colors = json.loads(json_termscheme)["dark" if darkmode else "light"]
 
-    primary_color_argb = hex_to_argb(material_colors["primary_paletteKeyColor"])
+    # Handle both snake_case and camelCase key naming across library versions
+    primary_key = material_colors.get("primary_paletteKeyColor",
+                  material_colors.get("primaryPaletteKeyColor",
+                  material_colors.get("primary", "#6750A4")))
+    primary_color_argb = hex_to_argb(primary_key)
     
     # User-configurable parameters
     user_saturation = args.term_saturation  # 0.0-1.0
