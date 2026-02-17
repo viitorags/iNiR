@@ -80,7 +80,7 @@ Change them. Break them. Make them yours. We won't judge.
 | Key | Action |
 |-----|--------|
 | `Super+T` / `Super+Return` | Terminal (foot) |
-| `Super+E` | File manager (dolphin) |
+| `Super+E` | File manager (nautilus) |
 
 ---
 

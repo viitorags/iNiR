@@ -193,8 +193,7 @@ FEDORA_CORE_PKGS=(
   gnome-keyring
   
   # File manager
-  dolphin
-  kio-extras
+  nautilus
   
   # Terminal - kitty is default, configurable in Settings
   kitty

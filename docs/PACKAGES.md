@@ -36,7 +36,7 @@ Essential packages for Niri + ii to function.
 | `polkit` | Privilege elevation |
 | `networkmanager` | Network management |
 | `gnome-keyring` | Secrets storage |
-| `dolphin` | File manager |
+| `nautilus` | File manager |
 | `kitty` | Terminal (default) |
 | `foot` | Terminal (fallback) |
 | `fish` | Fish shell (required for scripts) |

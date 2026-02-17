@@ -207,7 +207,8 @@ environment {
 // ============================================================================
 
 spawn-at-startup "bash" "-c" "wl-paste --watch cliphist store &"
-spawn-at-startup "/usr/lib/mate-polkit/polkit-mate-authentication-agent-1"
+spawn-at-startup "/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1"
+spawn-at-startup "xwayland-satellite"
 spawn-at-startup "qs" "-c" "ii"
 
 // ============================================================================
@@ -256,7 +257,7 @@ binds {
     // Applications (uses configured terminal from Settings)
     Mod+T { spawn "bash" "-c" "$HOME/.config/quickshell/ii/scripts/launch-terminal.sh"; }
     Mod+Return { spawn "bash" "-c" "$HOME/.config/quickshell/ii/scripts/launch-terminal.sh"; }
-    Super+E { spawn "dolphin"; }
+    Super+E { spawn "nautilus"; }
     
     // Window management
     Mod+Q repeat=false { spawn "bash" "-c" "$HOME/.config/quickshell/ii/scripts/close-window.sh"; }
@@ -311,11 +312,18 @@ binds {
     XF86AudioLowerVolume allow-when-locked=true { spawn "qs" "-c" "ii" "ipc" "call" "audio" "volumeDown"; }
     XF86AudioMute allow-when-locked=true { spawn "qs" "-c" "ii" "ipc" "call" "audio" "mute"; }
     XF86AudioMicMute allow-when-locked=true { spawn "qs" "-c" "ii" "ipc" "call" "audio" "micMute"; }
+    
+    // Brightness keys
+    XF86MonBrightnessUp allow-when-locked=true { spawn "qs" "-c" "ii" "ipc" "call" "brightness" "increment"; }
+    XF86MonBrightnessDown allow-when-locked=true { spawn "qs" "-c" "ii" "ipc" "call" "brightness" "decrement"; }
 
     // Music control (uses MPRIS - works with YtMusic and other players)
     Ctrl+Mod+Space { spawn "qs" "-c" "ii" "ipc" "call" "mpris" "playPause"; }
     Mod+Alt+N { spawn "qs" "-c" "ii" "ipc" "call" "mpris" "next"; }
     Mod+Alt+P { spawn "qs" "-c" "ii" "ipc" "call" "mpris" "previous"; }
+    
+    // Power key
+    Mod+Shift+Q { spawn "qs" "-c" "ii" "ipc" "call" "session" "toggle"; }
 }
 
 

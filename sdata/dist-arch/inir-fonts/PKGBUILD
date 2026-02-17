@@ -6,6 +6,7 @@ arch=(any)
 license=(MIT)
 depends=(
   fontconfig
+  noto-fonts-emoji
   ttf-dejavu
   ttf-liberation
   ttf-roboto

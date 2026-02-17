@@ -347,8 +347,12 @@ DEBIAN_CORE_PKGS=(
   gnome-keyring
   
   # File manager
-  dolphin
-  kio-extras
+  nautilus
+  
+  # KDE frameworks (CRITICAL — Quickshell needs these at runtime)
+  libkf6syntaxhighlighting6
+  qml6-module-org-kde-kirigami
+  kdialog
   
   # Terminal
   foot

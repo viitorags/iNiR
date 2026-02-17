@@ -184,6 +184,12 @@ OFFICIAL_PACKAGES=(
   # Theming
   matugen
   
+  # Emoji font (CRITICAL — overview search, notifications, etc.)
+  noto-fonts-emoji
+  
+  # File manager
+  nautilus
+  
   # Icon themes - fallbacks from official repos (always available)
   hicolor-icon-theme
   adwaita-icon-theme
