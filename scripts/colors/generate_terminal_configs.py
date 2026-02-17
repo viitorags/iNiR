@@ -377,8 +377,8 @@ urls={colors.get("term4", "#458588")[1:]}
     foot_conf = f"{home}/.config/foot/foot.ini"
     if ensure_line_in_file(
         foot_conf,
-        "include=~/.config/foot/inir-colors.ini",
-        r"include\s*=.*inir-colors\.ini",
+        "include=~/.config/foot/colors.ini",
+        r"include\s*=.*colors\.ini",
         at_top=True,
     ):
         print(f"✓ Generated Foot config and auto-integrated")
@@ -1137,7 +1137,7 @@ def main():
         generate_alacritty_config(colors, f"{home}/.config/alacritty/colors.toml")
 
     if "foot" in terminals:
-        generate_foot_config(colors, f"{home}/.config/foot/inir-colors.ini")
+        generate_foot_config(colors, f"{home}/.config/foot/colors.ini")
 
     if "wezterm" in terminals:
         generate_wezterm_config(colors, f"{home}/.config/wezterm/colors.lua")
