@@ -147,9 +147,7 @@ case "${SKIP_QUICKSHELL}" in
       if ! verify_qs_loads 8; then
         log_error "Verification failed!"
         echo ""
-        echo -e "${STY_YELLOW}The update may have issues. Options:${STY_RST}"
-        echo "  1. Run ${STY_CYAN}./setup doctor${STY_RST} to diagnose"
-        echo "  2. Run ${STY_CYAN}./setup restore${STY_RST} to rollback"
+        log_warning "Update may have issues — run './setup doctor' or './setup restore' to rollback"
         echo ""
       else
         log_success "Verification passed"
@@ -409,10 +407,9 @@ if [[ -d "dots/.config/vesktop/themes" ]]; then
   VESKTOP_THEME_B="${XDG_CONFIG_HOME}/Vesktop/themes/system24.theme.css"
   if [[ ! -f "$VESKTOP_THEME_A" && ! -f "$VESKTOP_THEME_B" ]]; then
     log_warning "Vesktop theme file was not found after install"
-    echo -e "${STY_YELLOW}Expected one of:${STY_RST}"
-    echo -e "  ${STY_YELLOW}$VESKTOP_THEME_A${STY_RST}"
-    echo -e "  ${STY_YELLOW}$VESKTOP_THEME_B${STY_RST}"
-    echo -e "${STY_YELLOW}If Vesktop uses a different config dir, install manually or set SYSTEM24_PALETTE_CSS to your path.${STY_RST}"
+    log_warning "Expected: $VESKTOP_THEME_A"
+    log_warning "      or: $VESKTOP_THEME_B"
+    log_warning "Set SYSTEM24_PALETTE_CSS to your Vesktop themes path if it differs"
   fi
 fi
 
