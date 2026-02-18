@@ -340,7 +340,7 @@ tui_banner() {
             "██║██║      ██║ ╚████║██║██║  ██║██║" \
             "╚═╝╚═╝      ╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝╚═╝" \
             "" \
-            "$(gum style --foreground 245 'illogical-impulse on Niri')"
+            "$(gum style --foreground 245 'iNiR — your niri shell')"
     else
         echo ""
         echo -e "${STY_PURPLE}${STY_BOLD}"
@@ -354,7 +354,7 @@ tui_banner() {
  ║   ██║██║      ██║ ╚████║██║██║  ██║██║                            ║
  ║   ╚═╝╚═╝      ╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝╚═╝                            ║
  ║                                                                   ║
- ║                  illogical-impulse on Niri                        ║
+ ║                    iNiR — your niri shell                          ║
  ║                                                                   ║
  ╚═══════════════════════════════════════════════════════════════════╝
 EOF

@@ -36,9 +36,7 @@ NEW_NOTIF_PATH="${XDG_STATE_HOME}/quickshell/user/notifications.json"
 
 # Migrate from old cache location if exists
 if [[ -f "$OLD_NOTIF_PATH" && ! -f "$NEW_NOTIF_PATH" ]]; then
-  if ! ${quiet:-false}; then
-    echo -e "${STY_CYAN}Migrating notifications to persistent storage...${STY_RST}"
-  fi
+  tui_info "Migrating notifications to persistent storage..."
   mv "$OLD_NOTIF_PATH" "$NEW_NOTIF_PATH"
   rmdir "${XDG_CACHE_HOME}/quickshell/notifications" 2>/dev/null || true
   log_success "Notifications migrated to state directory"
@@ -103,9 +101,7 @@ if [[ ! "${SKIP_BACKUP}" == true ]]; then auto_backup_configs; fi
 case "${SKIP_QUICKSHELL}" in
   true) sleep 0;;
   *)
-    if ! ${quiet:-false}; then
-      echo -e "${STY_CYAN}Installing Quickshell ii config...${STY_RST}"
-    fi
+    tui_info "Installing Quickshell ii config..."
 
     # The ii QML code is in the root of this repo, not in dots/
     # We copy it to ~/.config/quickshell/ii/
@@ -178,9 +174,7 @@ esac
 #####################################################################################
 # Install config files from dots/
 #####################################################################################
-if ! ${quiet:-false}; then
-  echo -e "${STY_CYAN}Installing config files from dots/...${STY_RST}"
-fi
+tui_info "Installing config files..."
 
 # Niri config
 case "${SKIP_NIRI}" in
@@ -246,7 +240,7 @@ fi
 # appends a template entry to ~/.config/matugen/config.toml
 if command -v sddm &>/dev/null; then
   function setup_sddm_theme(){
-    echo -e "${STY_BLUE}Setting up ii-sddm-theme login screen...${STY_RST}"
+    tui_info "Setting up ii-sddm-theme login screen..."
     local sddm_script="${REPO_ROOT}/scripts/sddm/install-ii-sddm-theme.sh"
     if [[ -f "$sddm_script" ]]; then
       chmod +x "$sddm_script"
@@ -382,9 +376,7 @@ fi
 
 # Copy Colloid theme to user Kvantum folder if installed
 if [[ -d "/usr/share/Kvantum/Colloid" ]]; then
-  if ! ${quiet:-false}; then
-    echo -e "${STY_CYAN}Setting up Kvantum Colloid theme...${STY_RST}"
-  fi
+  tui_info "Setting up Kvantum Colloid theme..."
   mkdir -p "${XDG_CONFIG_HOME}/Kvantum/Colloid"
   cp -r /usr/share/Kvantum/Colloid/* "${XDG_CONFIG_HOME}/Kvantum/Colloid/"
   log_success "Kvantum Colloid theme configured"
@@ -474,9 +466,7 @@ v dedup_and_sort_listfile "${INSTALLED_LISTFILE}" "${INSTALLED_LISTFILE}"
 #####################################################################################
 # Environment variables are configured in Niri
 #####################################################################################
-if ! ${quiet:-false}; then
-  echo -e "${STY_CYAN}Configuring environment variables...${STY_RST}"
-fi
+tui_info "Configuring environment variables..."
 
 # Primary: environment {} block in Niri config.kdl (already installed)
 # Secondary: shell profile files for terminals outside Niri session (SSH, TTY, etc.)
@@ -485,7 +475,7 @@ fi
 if grep -q "ILLOGICAL_IMPULSE_VIRTUAL_ENV" "${XDG_CONFIG_HOME}/niri/config.kdl" 2>/dev/null; then
     log_success "Environment variable configured in Niri config"
 else
-    echo -e "${STY_YELLOW}Warning: ILLOGICAL_IMPULSE_VIRTUAL_ENV not found in Niri config${STY_RST}"
+    log_warning "ILLOGICAL_IMPULSE_VIRTUAL_ENV not found in Niri config"
 fi
 
 # Write shell profile env vars (for SSH, TTY, non-Niri terminals)
@@ -546,7 +536,7 @@ if [[ -f "$GTK_SETTINGS" ]]; then
     ICON_THEME=$(grep "gtk-icon-theme-name" "$GTK_SETTINGS" | cut -d= -f2 | xargs)
     if [[ -n "$ICON_THEME" ]]; then
         if ! ${quiet:-false}; then
-          echo -e "${STY_CYAN}Applying icon theme '$ICON_THEME' to Qt/KDE...${STY_RST}"
+          tui_info "Applying icon theme '$ICON_THEME' to Qt/KDE..."
         fi
 
         # Ensure [Icons] section exists
@@ -569,9 +559,7 @@ fi
 #####################################################################################
 # Set default MIME associations (only if not already set)
 #####################################################################################
-if ! ${quiet:-false}; then
-  echo -e "${STY_CYAN}Configuring default applications...${STY_RST}"
-fi
+tui_info "Configuring default applications..."
 
 # Function to set MIME default only if not already configured or set to something broken
 # Note: xdg-mime may fail without a graphical session, so we handle errors gracefully
@@ -694,9 +682,7 @@ if [[ -n "$WEB_BROWSER" ]]; then
     log_success "Set default web browser: $WEB_BROWSER"
 fi
 
-if ! ${quiet:-false}; then
-  echo -e "${STY_CYAN}Copying wallpapers...${STY_RST}"
-fi
+tui_info "Copying wallpapers..."
 
 #####################################################################################
 # Copy bundled wallpapers to user's Pictures/Wallpapers (always, don't overwrite)
@@ -746,9 +732,7 @@ if [[ -z "$DEFAULT_WALLPAPER" ]]; then
   done
 fi
 if [[ "${INSTALL_FIRSTRUN}" == true && -n "${DEFAULT_WALLPAPER}" && -f "${DEFAULT_WALLPAPER}" ]]; then
-  if ! ${quiet:-false}; then
-    echo -e "${STY_CYAN}Setting default wallpaper...${STY_RST}"
-  fi
+  tui_info "Setting default wallpaper..."
 
   # Ensure output directories exist for matugen
   mkdir -p "${XDG_STATE_HOME}/quickshell/user/generated"
@@ -770,33 +754,31 @@ if [[ "${INSTALL_FIRSTRUN}" == true && -n "${DEFAULT_WALLPAPER}" && -f "${DEFAUL
   # Generate initial theme colors with matugen
   export ILLOGICAL_IMPULSE_VIRTUAL_ENV="${XDG_STATE_HOME}/quickshell/.venv"
   if command -v matugen >/dev/null 2>&1; then
-    if ! ${quiet:-false}; then
-      echo -e "${STY_CYAN}Generating theme colors from wallpaper...${STY_RST}"
-    fi
+    tui_info "Generating theme colors from wallpaper..."
     # Use --config to ensure correct config file is used
     if matugen image "${DEFAULT_WALLPAPER}" --mode dark --config "${XDG_CONFIG_HOME}/matugen/config.toml" 2>&1; then
       log_success "Theme colors generated (matugen)"
 
       # Generate material_colors.scss from colors.json (needed by applycolor.sh chain)
-      local python_cmd="${ILLOGICAL_IMPULSE_VIRTUAL_ENV}/bin/python"
-      local gen_material="${II_TARGET}/scripts/colors/generate_colors_material.py"
-      local colors_json="${XDG_STATE_HOME}/quickshell/user/generated/colors.json"
-      local scss_file="${XDG_STATE_HOME}/quickshell/user/generated/material_colors.scss"
-      if [[ -f "$gen_material" && -f "$colors_json" ]]; then
-        local _py=""
-        [[ -x "$python_cmd" ]] && _py="$python_cmd" || { command -v python3 &>/dev/null && _py="python3"; }
-        if [[ -n "$_py" ]]; then
-          "$_py" "$gen_material" --path "${DEFAULT_WALLPAPER}" --mode dark --termscheme "${II_TARGET}/scripts/colors/terminal/scheme-base.json" --blend_bg_fg > "$scss_file" 2>/dev/null || true
-          [[ -s "$scss_file" ]] && log_success "Material colors SCSS generated"
+      # NOTE: no `local` here — this block is at top-level (sourced file), not inside a function
+      _init_python_cmd="${ILLOGICAL_IMPULSE_VIRTUAL_ENV}/bin/python3"
+      _init_gen_material="${II_TARGET}/scripts/colors/generate_colors_material.py"
+      _init_colors_json="${XDG_STATE_HOME}/quickshell/user/generated/colors.json"
+      _init_scss_file="${XDG_STATE_HOME}/quickshell/user/generated/material_colors.scss"
+      if [[ -f "$_init_gen_material" && -f "$_init_colors_json" ]]; then
+        _init_py=""
+        [[ -x "$_init_python_cmd" ]] && _init_py="$_init_python_cmd" || { command -v python3 &>/dev/null && _init_py="python3"; }
+        if [[ -n "$_init_py" ]]; then
+          "$_init_py" "$_init_gen_material" --path "${DEFAULT_WALLPAPER}" --mode dark --termscheme "${II_TARGET}/scripts/colors/terminal/scheme-base.json" --blend_bg_fg > "$_init_scss_file" 2>/dev/null || true
+          [[ -s "$_init_scss_file" ]] && log_success "Material colors SCSS generated"
         fi
       fi
 
       # Run applycolor.sh which handles GTK, KDE, Darkly, and terminal theming
-      if [[ -s "$scss_file" && -f "${II_TARGET}/scripts/colors/applycolor.sh" ]]; then
+      if [[ -s "$_init_scss_file" && -f "${II_TARGET}/scripts/colors/applycolor.sh" ]]; then
         bash "${II_TARGET}/scripts/colors/applycolor.sh" 2>/dev/null || true
         log_success "GTK/KDE/terminal theme colors applied"
       elif [[ -f "${II_TARGET}/scripts/colors/apply-gtk-theme.sh" ]]; then
-        # Fallback: extract colors from scss and pass to apply-gtk-theme.sh
         bash "${II_TARGET}/scripts/colors/apply-gtk-theme.sh" 2>/dev/null || true
         log_success "Qt Darkly theme colors generated (fallback)"
       fi
@@ -813,9 +795,7 @@ fi
 #####################################################################################
 DARKLY_COLORS_FILE="${HOME}/.local/share/color-schemes/Darkly.colors"
 if [[ ! -f "${DARKLY_COLORS_FILE}" ]]; then
-  if ! ${quiet:-false}; then
-    echo -e "${STY_CYAN}Generating Darkly color scheme for Qt file dialogs...${STY_RST}"
-  fi
+  tui_info "Generating Darkly color scheme for Qt apps..."
 
   # Ensure directory exists
   mkdir -p "$(dirname "${DARKLY_COLORS_FILE}")"

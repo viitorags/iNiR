@@ -3,13 +3,13 @@
 
 # shellcheck shell=bash
 
-printf "${STY_CYAN}[$0]: 2. System setup${STY_RST}\n"
+tui_title "System Setup"
 
 #####################################################################################
 # User groups
 #####################################################################################
 function setup_user_groups(){
-  echo -e "${STY_BLUE}Setting up user groups...${STY_RST}"
+  tui_info "Setting up user groups..."
   
   # i2c group for ddcutil (external monitor brightness)
   if [[ -z $(getent group i2c) ]]; then
@@ -20,14 +20,14 @@ function setup_user_groups(){
   x sudo usermod -aG video,i2c,input "$(whoami)"
   
   log_success "User added to video, i2c, input groups"
-  log_warning "You may need to log out and back in for group changes to take effect"
+  log_warning "Group changes require logout/login to take effect"
 }
 
 #####################################################################################
 # Systemd services
 #####################################################################################
 function setup_systemd_services(){
-  echo -e "${STY_BLUE}Setting up systemd services...${STY_RST}"
+  tui_info "Setting up systemd services..."
   
   # Check if systemd is available
   if ! command -v systemctl &>/dev/null || [[ ! -d /run/systemd/system ]]; then
@@ -65,7 +65,7 @@ function setup_systemd_services(){
   fi
 
   if ! $ydotool_service_found && command -v ydotool &>/dev/null; then
-    log_warning "ydotool installed but no systemd service found - may need manual configuration"
+    log_warning "ydotool installed but no systemd service found"
   fi
   
   # Enable ydotool only if service exists
@@ -88,7 +88,7 @@ function setup_systemd_services(){
 # Super-tap daemon (tap Super key to toggle overview)
 #####################################################################################
 function setup_super_daemon(){
-  echo -e "${STY_BLUE}Setting up Super-tap daemon...${STY_RST}"
+  tui_info "Setting up Super-tap daemon..."
   
   local daemon_src="${REPO_ROOT}/scripts/daemon/ii_super_overview_daemon.py"
   local service_src="${REPO_ROOT}/scripts/systemd/ii-super-overview.service"
@@ -110,7 +110,7 @@ function setup_super_daemon(){
   x cp "$service_src" "$service_dst"
   
   # Enable service if in graphical session
-  if [[ ! -z "${DBUS_SESSION_BUS_ADDRESS}" ]]; then
+  if [[ -n "${DBUS_SESSION_BUS_ADDRESS}" ]]; then
     v systemctl --user daemon-reload
     v systemctl --user enable ii-super-overview.service --now
   else
@@ -122,7 +122,7 @@ function setup_super_daemon(){
 }
 
 function disable_super_daemon_if_present(){
-  echo -e "${STY_BLUE}Disabling legacy Super-tap daemon (if present)...${STY_RST}"
+  tui_info "Cleaning up legacy Super-tap daemon..."
 
   local daemon_dst="${HOME}/.local/bin/ii_super_overview_daemon.py"
   local config_dir="${XDG_CONFIG_HOME:-${HOME}/.config}"
@@ -154,7 +154,7 @@ function disable_super_daemon_if_present(){
 # GTK/KDE settings
 #####################################################################################
 function setup_desktop_settings(){
-  echo -e "${STY_BLUE}Applying desktop settings...${STY_RST}"
+  tui_info "Applying desktop settings..."
   
   # gsettings for GNOME/GTK apps (Nautilus, etc.)
   if command -v gsettings &>/dev/null; then
@@ -178,6 +178,7 @@ function setup_desktop_settings(){
   
   # Configure Kvantum theme via config file (avoid GUI)
   # kvantummanager --set can open a GUI window, so we write the config directly
+  # Use MaterialAdw — this is the dynamic theme updated by apply-gtk-theme.sh
   mkdir -p "${XDG_CONFIG_HOME}/Kvantum"
   echo -e "[General]\ntheme=MaterialAdw" > "${XDG_CONFIG_HOME}/Kvantum/kvantum.kvconfig"
 
@@ -234,9 +235,7 @@ if [[ "${II_ENABLE_SUPER_DAEMON:-0}" == "1" ]]; then
   showfun setup_super_daemon
   v setup_super_daemon
 else
-  showfun disable_super_daemon_if_present
   v disable_super_daemon_if_present
-  log_warning "Skipping legacy Super-tap daemon; use Mod+Space for ii overview. Set II_ENABLE_SUPER_DAEMON=1 to install."
 fi
 
 # SilentSDDM theme (login screen for users without another DE)
