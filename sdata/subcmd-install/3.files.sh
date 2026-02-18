@@ -67,29 +67,16 @@ esac
 function auto_backup_configs(){
   local backup=false
   case $ask in
-    false) if [[ ! -d "$BACKUP_DIR" ]]; then local backup=true;fi;;
+    false) [[ ! -d "$BACKUP_DIR" ]] && backup=true ;;
     *)
-      printf "${STY_YELLOW}"
-      printf "Would you like to backup existing configs to \"$BACKUP_DIR\"?\n"
-      printf "${STY_RST}"
-      while true;do
-        echo "  y = Yes, backup"
-        echo "  n = No, skip"
-        local p; read -p "====> " p
-        case $p in
-          [yY]) local backup=true;break ;;
-          [nN]) local backup=false;break ;;
-          *) echo -e "${STY_RED}Please enter [y/n].${STY_RST}";;
-        esac
-      done
+      if tui_confirm "Backup existing configs to ${BACKUP_DIR}?" "yes"; then
+        backup=true
+      fi
       ;;
   esac
-  if $backup;then
+  if $backup; then
     backup_clashing_targets dots/.config $XDG_CONFIG_HOME "${BACKUP_DIR}/.config"
-    # Only show message if backup dir was actually created
-    if [[ -d "${BACKUP_DIR}" ]]; then
-      printf "${STY_BLUE}Backup finished: ${BACKUP_DIR}${STY_RST}\n"
-    fi
+    [[ -d "${BACKUP_DIR}" ]] && log_success "Backup saved to ${BACKUP_DIR}"
   fi
 }
 
