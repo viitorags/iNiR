@@ -27,6 +27,17 @@ MouseArea {
     readonly property int _nameRole:     Qt.UserRole + 1
     readonly property int _realNameRole: Qt.UserRole + 2
     readonly property int _sessNameRole: Qt.UserRole + 4   // session display name
+    readonly property int _sessTypeRole: Qt.UserRole + 3   // 1=X11, 2=Wayland
+
+    // Failed login humor — cycles through messages on consecutive failures
+    property int _failCount: 0
+    readonly property var _failMessages: [
+        "Wrong password",
+        "Nope, still wrong",
+        "...are you sure this is your PC?"
+    ]
+
+    property bool sessionPopupOpen: false
 
     readonly property string currentUserLogin: {
         if (userModel.count <= 0) return userModel.lastUser || ""
@@ -72,9 +83,10 @@ MouseArea {
     readonly property string _avatarPath0: root.currentUserLogin ? "/home/" + root.currentUserLogin + "/.face" : ""
     readonly property string _avatarPath1: root.currentUserLogin ? "/var/lib/AccountsService/icons/" + root.currentUserLogin : ""
     readonly property string _avatarPath2: Qt.resolvedUrl("assets/user-face.png")
-    readonly property string _avatarPath3: ""
+    readonly property string _avatarPath3: root.currentUserLogin ? "/usr/share/sddm/faces/" + root.currentUserLogin + ".face.icon" : ""
 
     function switchToLogin(captureChar) {
+        root.sessionPopupOpen = false
         root.currentView = "login"
         Qt.callLater(function() {
             passwordBox.forceActiveFocus()
@@ -99,6 +111,7 @@ MouseArea {
         function onLoginFailed() {
             root.loginInProgress = false
             root.loginFailed = true
+            root._failCount = Math.min(root._failCount + 1, root._failMessages.length)
             passwordBox.text = ""
             shakeAnim.restart()
         }
@@ -319,6 +332,7 @@ MouseArea {
                     cursorShape: root.multiUser ? Qt.PointingHandCursor : Qt.ArrowCursor
                     onClicked: if (root.multiUser) {
                         root.currentUserIndex = (root.currentUserIndex + 1) % userModel.count
+                        root._failCount = 0; root.loginFailed = false
                         passwordBox.text = ""
                     }
 
@@ -384,7 +398,9 @@ MouseArea {
 
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: root.loginFailed ? "Incorrect password" : "Password"
+                            text: root.loginFailed && root._failCount > 0
+                                ? root._failMessages[Math.min(root._failCount - 1, root._failMessages.length - 1)]
+                                : "Password"
                             font.pixelSize: 16
                             color: root.loginFailed ? root.colError : root.colOnSurfaceVariant
                             visible: passwordBox.text.length === 0
@@ -463,39 +479,121 @@ MouseArea {
         LockIconButton { icon: "restart_alt";        tooltip: "Restart";    enabled: sddm.canReboot;   onClicked: sddm.reboot() }
     }
 
-    // ── BOTTOM-LEFT: session selector (ALWAYS visible, outside loginView) ────
-    MouseArea {
+    // ── BOTTOM-LEFT: session selector with popup menu ────────────────────────
+    Item {
+        id: sessionButton
         anchors.bottom: parent.bottom; anchors.left: parent.left
         anchors.bottomMargin: 24; anchors.leftMargin: 24
         visible: sessionModel.count > 0; z: 10
         width: sessionRow.implicitWidth + 16; height: sessionRow.implicitHeight + 16
-        hoverEnabled: true
-        onClicked: if (sessionModel.count > 1) {
-            root.currentSessionIndex = (root.currentSessionIndex + 1) % sessionModel.count
-        }
-        cursorShape: sessionModel.count > 1 ? Qt.PointingHandCursor : Qt.ArrowCursor
 
-        Rectangle {
-            anchors.fill: parent; radius: 8
-            color: parent.pressed ? Qt.rgba(1,1,1,0.15) : parent.containsMouse ? Qt.rgba(1,1,1,0.08) : "transparent"
-            Behavior on color { ColorAnimation { duration: 150 } }
+        MouseArea {
+            anchors.fill: parent; hoverEnabled: true
+            cursorShape: sessionModel.count > 1 ? Qt.PointingHandCursor : Qt.ArrowCursor
+            onClicked: if (sessionModel.count > 1) root.sessionPopupOpen = !root.sessionPopupOpen
+            Rectangle {
+                anchors.fill: parent; radius: 8
+                color: parent.pressed ? Qt.rgba(1,1,1,0.15)
+                     : (parent.containsMouse || root.sessionPopupOpen) ? Qt.rgba(1,1,1,0.08)
+                     : "transparent"
+                Behavior on color { ColorAnimation { duration: 150 } }
+            }
         }
 
         Row {
             id: sessionRow
-            anchors.centerIn: parent
-            spacing: 6
+            anchors.centerIn: parent; spacing: 6
             MSymbol { text: "desktop_windows"; iconSize: 18; iconColor: root.colOnSurface; symFont: root.symFont() }
             Text {
-                text: root.currentSessionName
-                font.pixelSize: 14; color: root.colOnSurface
+                text: root.currentSessionName; font.pixelSize: 14; color: root.colOnSurface
                 anchors.verticalCenter: parent.verticalCenter
             }
             MSymbol {
-                text: "expand_more"; iconSize: 16; iconColor: root.colOnSurfaceVariant
-                symFont: root.symFont()
-                visible: sessionModel.count > 1
-                anchors.verticalCenter: parent.verticalCenter
+                text: root.sessionPopupOpen ? "expand_less" : "expand_more"
+                iconSize: 16; iconColor: root.colOnSurfaceVariant; symFont: root.symFont()
+                visible: sessionModel.count > 1; anchors.verticalCenter: parent.verticalCenter
+            }
+        }
+    }
+
+    // Session popup dismiss overlay
+    MouseArea {
+        anchors.fill: parent; visible: root.sessionPopupOpen; z: 25
+        onClicked: root.sessionPopupOpen = false
+    }
+
+    // Session selection popup menu
+    Rectangle {
+        id: sessionPopup
+        visible: root.sessionPopupOpen; z: 30
+        x: sessionButton.x
+        y: sessionButton.y - height - 8
+        width: Math.max(220, sessionPopupCol.implicitWidth + 20)
+        height: sessionPopupCol.implicitHeight + 16
+        radius: 12
+        color: Qt.rgba(root.colSurface.r, root.colSurface.g, root.colSurface.b, 0.95)
+        border.color: Qt.rgba(root.colOnSurface.r, root.colOnSurface.g, root.colOnSurface.b, 0.15)
+        border.width: 1
+        layer.enabled: true
+        layer.effect: DropShadow {
+            horizontalOffset: 0; verticalOffset: -4; radius: 16
+            samples: 33; color: Qt.rgba(0,0,0,0.4)
+        }
+
+        Column {
+            id: sessionPopupCol
+            anchors { left: parent.left; right: parent.right; top: parent.top; margins: 8 }
+            spacing: 2
+
+            Repeater {
+                model: sessionModel
+                delegate: Rectangle {
+                    id: sessItem
+                    width: sessionPopupCol.width; height: 38; radius: 8
+                    property bool isCurrent: index === root.currentSessionIndex
+                    property string sessName: {
+                        var v = sessionModel.data(sessionModel.index(index, 0), root._sessNameRole)
+                        return (v !== undefined && v !== null && String(v).length > 0) ? String(v) : "Session " + (index + 1)
+                    }
+                    property int sessType: {
+                        var v = sessionModel.data(sessionModel.index(index, 0), root._sessTypeRole)
+                        return (v !== undefined && v !== null) ? Number(v) : 0
+                    }
+
+                    color: sessMouseArea.pressed ? Qt.rgba(root.colPrimary.r, root.colPrimary.g, root.colPrimary.b, 0.25)
+                         : sessMouseArea.containsMouse ? Qt.rgba(root.colPrimary.r, root.colPrimary.g, root.colPrimary.b, 0.12)
+                         : sessItem.isCurrent ? Qt.rgba(root.colPrimary.r, root.colPrimary.g, root.colPrimary.b, 0.06)
+                         : "transparent"
+                    Behavior on color { ColorAnimation { duration: 100 } }
+
+                    Row {
+                        anchors { verticalCenter: parent.verticalCenter; left: parent.left; leftMargin: 12 }
+                        spacing: 10
+                        MSymbol {
+                            text: sessItem.sessType === 2 ? "desktop_windows" : "monitor"
+                            iconSize: 16; iconColor: root.colOnSurface; symFont: root.symFont()
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                        Text {
+                            text: sessItem.sessName; font.pixelSize: 13
+                            color: sessItem.isCurrent ? root.colPrimary : root.colOnSurface
+                            font.weight: sessItem.isCurrent ? Font.Medium : Font.Normal
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+
+                    MSymbol {
+                        visible: sessItem.isCurrent
+                        anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
+                        text: "check"; iconSize: 16; iconColor: root.colPrimary; symFont: root.symFont()
+                    }
+
+                    MouseArea {
+                        id: sessMouseArea; anchors.fill: parent; hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: { root.currentSessionIndex = index; root.sessionPopupOpen = false }
+                    }
+                }
             }
         }
     }
@@ -528,6 +626,7 @@ MouseArea {
 
     Keys.onPressed: function(event) {
         if (event.key === Qt.Key_Escape) {
+            if (root.sessionPopupOpen) { root.sessionPopupOpen = false; return }
             if (root.keyboardOpen) { root.keyboardOpen = false; return }
             if (passwordBox.text.length > 0) passwordBox.text = ""
             else if (root.showLoginView) root.currentView = "clock"
