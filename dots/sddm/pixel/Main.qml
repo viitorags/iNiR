@@ -2,44 +2,49 @@
 // States: "clock" (initial) ↔ "login" (password entry), same layout + transitions.
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
-import Qt5Compat.GraphicalEffects
+import QtGraphicalEffects 1.0
 import SddmComponents 2.0
 import "."
 
 MouseArea {
     id: root
-    width: Screen.width; height: Screen.height
     focus: true; hoverEnabled: true
     acceptedButtons: Qt.LeftButton | Qt.RightButton
 
     // ── SDDM state ─────────────────────────────────────────────────────────
-    property int userIndex: userModel.lastIndex >= 0 ? userModel.lastIndex : 0
     property int currentSessionIndex: sessionModel.lastIndex >= 0 ? sessionModel.lastIndex : 0
+    property int currentUserIndex: userModel.lastIndex >= 0 ? userModel.lastIndex : 0
     property bool loginInProgress: false
     property bool loginFailed: false
     property bool keyboardOpen: false
     property string currentView: "clock"
     property bool showLoginView: currentView === "login"
 
-    readonly property string currentUserName: {
-        if (userModel.count <= 0 || !userModel.get) return ""
-        const u = userModel.get(root.userIndex)
-        return u ? (u.realName || u.name || "") : ""
-    }
+    // User/session data — Qt.DisplayRole is undefined in sddm-greeter;
+    // use explicit SDDM role numbers (verified via diagnostic dump):
+    //   UserModel:    NameRole = UserRole+1, RealNameRole = UserRole+2
+    //   SessionModel: NameRole = UserRole+4
+    readonly property int _nameRole:     Qt.UserRole + 1
+    readonly property int _realNameRole: Qt.UserRole + 2
+    readonly property int _sessNameRole: Qt.UserRole + 4   // session display name
+
     readonly property string currentUserLogin: {
-        if (userModel.count <= 0 || !userModel.get) return ""
-        const u = userModel.get(root.userIndex)
-        return u ? (u.name || "") : ""
+        if (userModel.count <= 0) return userModel.lastUser || ""
+        var v = userModel.data(userModel.index(root.currentUserIndex, 0), root._nameRole)
+        return (v !== undefined && v !== null) ? String(v) : (userModel.lastUser || "")
     }
-    readonly property string currentUserIcon: {
-        if (userModel.count <= 0 || !userModel.get) return ""
-        const u = userModel.get(root.userIndex)
-        return u ? (u.icon || "") : ""
+    readonly property string currentUserName: {
+        if (userModel.count <= 0) return root.currentUserLogin
+        var v = userModel.data(userModel.index(root.currentUserIndex, 0), root._realNameRole)
+        var s = (v !== undefined && v !== null) ? String(v) : ""
+        return s.length > 0 ? s : root.currentUserLogin
     }
+    readonly property bool multiUser: userModel.count > 1
+
     readonly property string currentSessionName: {
-        if (sessionModel.count <= 0 || !sessionModel.get) return ""
-        const s = sessionModel.get(root.currentSessionIndex)
-        return s ? (s.name || "") : ""
+        if (sessionModel.count <= 0) return "Desktop"
+        var v = sessionModel.data(sessionModel.index(root.currentSessionIndex, 0), root._sessNameRole)
+        return (v !== undefined && v !== null && String(v).length > 0) ? String(v) : "Desktop"
     }
 
     // ── Theme (synced from matugen by sync-pixel-sddm.py) ──────────────────
@@ -63,11 +68,11 @@ MouseArea {
         return p.startsWith("file://") ? p : "file://" + p
     }
 
-    // Avatar paths — try in order: synced local asset -> SDDM provided -> AccountsService -> ~/.face
-    readonly property string _avatarPath0: Qt.resolvedUrl("assets/user-face.png")
-    readonly property string _avatarPath1: root.currentUserIcon
-    readonly property string _avatarPath2: "/var/lib/AccountsService/icons/" + root.currentUserLogin
-    readonly property string _avatarPath3: "/home/" + root.currentUserLogin + "/.face"
+    // Avatar paths — dynamic based on selected user
+    readonly property string _avatarPath0: root.currentUserLogin ? "/home/" + root.currentUserLogin + "/.face" : ""
+    readonly property string _avatarPath1: root.currentUserLogin ? "/var/lib/AccountsService/icons/" + root.currentUserLogin : ""
+    readonly property string _avatarPath2: Qt.resolvedUrl("assets/user-face.png")
+    readonly property string _avatarPath3: ""
 
     function switchToLogin(captureChar) {
         root.currentView = "login"
@@ -106,11 +111,16 @@ MouseArea {
         id: wallpaper
         anchors.fill: parent; source: config.background || ""
         fillMode: Image.PreserveAspectCrop; asynchronous: true; cache: true
-        layer.enabled: true
-        layer.effect: FastBlur { radius: root.blurRadius }
+        layer.enabled: root.showLoginView
+        layer.effect: FastBlur {
+            radius: root.showLoginView ? root.blurRadius : 0
+            Behavior on radius { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
+        }
         transform: Scale {
             origin.x: wallpaper.width / 2; origin.y: wallpaper.height / 2
-            xScale: 1.15; yScale: 1.15
+            xScale: root.showLoginView ? 1.15 : 1.0; yScale: root.showLoginView ? 1.15 : 1.0
+            Behavior on xScale { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
+            Behavior on yScale { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
         }
     }
 
@@ -227,16 +237,18 @@ MouseArea {
                 }
 
                 Rectangle {
+                    id: avatarCircle
                     anchors.fill: parent; radius: width / 2
-                    color: Qt.rgba(root.colSurface.r, root.colSurface.g, root.colSurface.b, 0.95); clip: true
-                    // Avatar fallback chain: SDDM icon → AccountsService → ~/.face → initial letter
+                    color: root.colPrimary
+
+                    // Avatar images (hidden, rendered via layer mask)
                     Image {
                         id: avatarImg0
                         anchors.fill: parent; fillMode: Image.PreserveAspectCrop
                         asynchronous: true; cache: true; smooth: true; mipmap: true
                         sourceSize.width: 200; sourceSize.height: 200
                         source: root.makeFileUrl(root._avatarPath0)
-                        visible: status === Image.Ready
+                        visible: false
                     }
                     Image {
                         id: avatarImg1
@@ -244,7 +256,7 @@ MouseArea {
                         asynchronous: true; cache: true; smooth: true; mipmap: true
                         sourceSize.width: 200; sourceSize.height: 200
                         source: avatarImg0.status !== Image.Ready ? root.makeFileUrl(root._avatarPath1) : ""
-                        visible: status === Image.Ready && avatarImg0.status !== Image.Ready
+                        visible: false
                     }
                     Image {
                         id: avatarImg2
@@ -252,7 +264,7 @@ MouseArea {
                         asynchronous: true; cache: true; smooth: true; mipmap: true
                         sourceSize.width: 200; sourceSize.height: 200
                         source: avatarImg0.status !== Image.Ready && avatarImg1.status !== Image.Ready ? root.makeFileUrl(root._avatarPath2) : ""
-                        visible: status === Image.Ready && avatarImg0.status !== Image.Ready && avatarImg1.status !== Image.Ready
+                        visible: false
                     }
                     Image {
                         id: avatarImg3
@@ -261,26 +273,81 @@ MouseArea {
                         sourceSize.width: 200; sourceSize.height: 200
                         source: avatarImg0.status !== Image.Ready && avatarImg1.status !== Image.Ready && avatarImg2.status !== Image.Ready
                             ? root.makeFileUrl(root._avatarPath3) : ""
-                        visible: status === Image.Ready && avatarImg0.status !== Image.Ready && avatarImg1.status !== Image.Ready && avatarImg2.status !== Image.Ready
+                        visible: false
                     }
+
+                    // Circular mask for avatar - Qt5 compatible
+                    Item {
+                        id: avatarMasked
+                        anchors.fill: parent
+                        visible: avatarImg0.status === Image.Ready || avatarImg1.status === Image.Ready || avatarImg2.status === Image.Ready || avatarImg3.status === Image.Ready
+                        layer.enabled: true
+                        layer.effect: OpacityMask {
+                            maskSource: Rectangle { width: avatarCircle.width; height: avatarCircle.height; radius: width / 2 }
+                        }
+                        Image {
+                            anchors.fill: parent; fillMode: Image.PreserveAspectCrop
+                            source: avatarImg0.status === Image.Ready ? avatarImg0.source
+                                  : avatarImg1.status === Image.Ready ? avatarImg1.source
+                                  : avatarImg2.status === Image.Ready ? avatarImg2.source
+                                  : avatarImg3.source
+                            asynchronous: true; cache: true; smooth: true; mipmap: true
+                            sourceSize.width: 200; sourceSize.height: 200
+                        }
+                    }
+
+                    // Fallback: initial letter
                     Text {
                         anchors.centerIn: parent
                         text: (root.currentUserName || root.currentUserLogin || "?").charAt(0).toUpperCase()
-                        font.pixelSize: 40; font.weight: Font.Medium; color: root.colOnSurface
-                        visible: avatarImg0.status !== Image.Ready && avatarImg1.status !== Image.Ready && avatarImg2.status !== Image.Ready && avatarImg3.status !== Image.Ready
+                        font.pixelSize: 40; font.weight: Font.Medium; color: root.colOnPrimary
+                        visible: !avatarMasked.visible
                     }
                 }
             }
 
-            // Username with stagger Y — matches LockSurface exactly
-            Text {
+            // Username with stagger Y + user switcher (clickable when multi-user)
+            Item {
                 Layout.alignment: Qt.AlignHCenter; Layout.topMargin: 8
-                text: root.currentUserName || root.currentUserLogin
-                font.pixelSize: 22; font.weight: Font.Medium; color: root.colOnSurface
+                width: userNameRow.implicitWidth + 16; height: userNameRow.implicitHeight + 8
                 opacity: Math.min(1, Math.max(0, loginContent.animProgress * 3 - 0.3))
                 transform: Translate { y: (1 - Math.min(1, Math.max(0, loginContent.animProgress * 3 - 0.3))) * 15 }
-                layer.enabled: true
-                layer.effect: DropShadow { horizontalOffset: 0; verticalOffset: 1; radius: 6; samples: 13; color: Qt.rgba(0,0,0,0.4) }
+
+                MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: root.multiUser
+                    cursorShape: root.multiUser ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    onClicked: if (root.multiUser) {
+                        root.currentUserIndex = (root.currentUserIndex + 1) % userModel.count
+                        passwordBox.text = ""
+                    }
+
+                    Rectangle {
+                        anchors.fill: parent; radius: 8
+                        color: parent.pressed ? Qt.rgba(1,1,1,0.15) : parent.containsMouse ? Qt.rgba(1,1,1,0.08) : "transparent"
+                        visible: root.multiUser
+                        Behavior on color { ColorAnimation { duration: 150 } }
+                    }
+
+                    Row {
+                        id: userNameRow
+                        anchors.centerIn: parent
+                        spacing: 6
+                        Text {
+                            text: root.currentUserName || root.currentUserLogin
+                            font.pixelSize: 22; font.weight: Font.Medium; color: root.colOnSurface
+                            anchors.verticalCenter: parent.verticalCenter
+                            layer.enabled: true
+                            layer.effect: DropShadow { horizontalOffset: 0; verticalOffset: 1; radius: 6; samples: 13; color: Qt.rgba(0,0,0,0.4) }
+                        }
+                        MSymbol {
+                            text: "swap_horiz"; iconSize: 18; iconColor: root.colOnSurfaceVariant
+                            symFont: root.symFont()
+                            visible: root.multiUser
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+                }
             }
 
             // Password pill (300×52) with stagger Y + shake X — matches LockSurface exactly
@@ -335,8 +402,13 @@ MouseArea {
                             anchors.fill: parent; verticalAlignment: Text.AlignVCenter
                             echoMode: TextInput.Password
                             color: root.materialShapeChars ? "transparent" : root.colOnSurface
+                            selectionColor: root.colPrimary
+                            selectedTextColor: root.colOnPrimary
+                            cursorVisible: false
+                            cursorDelegate: Item {}
                             inputMethodHints: Qt.ImhSensitiveData
                             enabled: !root.loginInProgress; focus: true
+                            font.pixelSize: 16
                             onTextChanged: root.loginFailed = false
                             Keys.onReturnPressed: root.attemptLogin()
                             Keys.onEnterPressed:  root.attemptLogin()
@@ -376,45 +448,54 @@ MouseArea {
             }
         }
 
-        // Bottom-right: keyboard toggle + power buttons (symmetric with bottom-left)
-        Row {
-            anchors.bottom: parent.bottom; anchors.right: parent.right
-            anchors.bottomMargin: 24; anchors.rightMargin: 24
-            spacing: 8
+    }
 
-            LockIconButton { icon: "keyboard"; tooltip: "Virtual keyboard"; toggled: root.keyboardOpen
-                onClicked: root.keyboardOpen = !root.keyboardOpen }
-            LockIconButton { icon: "dark_mode";          tooltip: "Sleep";      enabled: sddm.canSuspend;  onClicked: sddm.suspend() }
-            LockIconButton { icon: "power_settings_new"; tooltip: "Shut down";  enabled: sddm.canPowerOff; onClicked: sddm.powerOff() }
-            LockIconButton { icon: "restart_alt";        tooltip: "Restart";    enabled: sddm.canReboot;   onClicked: sddm.reboot() }
+    // ── BOTTOM-RIGHT: power buttons (ALWAYS visible, outside loginView) ──────
+    Row {
+        anchors.bottom: parent.bottom; anchors.right: parent.right
+        anchors.bottomMargin: 24; anchors.rightMargin: 24
+        spacing: 8; z: 10
+
+        LockIconButton { icon: "keyboard"; tooltip: "Virtual keyboard"; toggled: root.keyboardOpen
+            onClicked: root.keyboardOpen = !root.keyboardOpen }
+        LockIconButton { icon: "dark_mode";          tooltip: "Sleep";      enabled: sddm.canSuspend;  onClicked: sddm.suspend() }
+        LockIconButton { icon: "power_settings_new"; tooltip: "Shut down";  enabled: sddm.canPowerOff; onClicked: sddm.powerOff() }
+        LockIconButton { icon: "restart_alt";        tooltip: "Restart";    enabled: sddm.canReboot;   onClicked: sddm.reboot() }
+    }
+
+    // ── BOTTOM-LEFT: session selector (ALWAYS visible, outside loginView) ────
+    MouseArea {
+        anchors.bottom: parent.bottom; anchors.left: parent.left
+        anchors.bottomMargin: 24; anchors.leftMargin: 24
+        visible: sessionModel.count > 0; z: 10
+        width: sessionRow.implicitWidth + 16; height: sessionRow.implicitHeight + 16
+        hoverEnabled: true
+        onClicked: if (sessionModel.count > 1) {
+            root.currentSessionIndex = (root.currentSessionIndex + 1) % sessionModel.count
+        }
+        cursorShape: sessionModel.count > 1 ? Qt.PointingHandCursor : Qt.ArrowCursor
+
+        Rectangle {
+            anchors.fill: parent; radius: 8
+            color: parent.pressed ? Qt.rgba(1,1,1,0.15) : parent.containsMouse ? Qt.rgba(1,1,1,0.08) : "transparent"
+            Behavior on color { ColorAnimation { duration: 150 } }
         }
 
-        // Bottom-left: session selector only (keyboard moved to bottom-right for symmetry)
-        MouseArea {
-            anchors.bottom: parent.bottom; anchors.left: parent.left
-            anchors.bottomMargin: 34; anchors.leftMargin: 30
-            visible: sessionModel.count > 0
-            width: sessionRow.implicitWidth + 8; height: sessionRow.implicitHeight + 8
-            onClicked: if (sessionModel.count > 1)
-                root.currentSessionIndex = (root.currentSessionIndex + 1) % sessionModel.count
-            cursorShape: sessionModel.count > 1 ? Qt.PointingHandCursor : Qt.ArrowCursor
-
-            Row {
-                id: sessionRow
-                anchors.centerIn: parent
-                spacing: 6
-                MSymbol { text: "desktop_windows"; iconSize: 16; iconColor: root.colOnSurfaceVariant; opacity: 0.7; symFont: root.symFont() }
-                Text {
-                    text: root.currentSessionName
-                    font.pixelSize: 13; color: root.colOnSurfaceVariant; opacity: 0.7
-                    anchors.verticalCenter: parent.verticalCenter
-                }
-                MSymbol {
-                    text: "chevron_right"; iconSize: 14; iconColor: root.colOnSurfaceVariant; opacity: 0.5
-                    symFont: root.symFont()
-                    visible: sessionModel.count > 1
-                    anchors.verticalCenter: parent.verticalCenter
-                }
+        Row {
+            id: sessionRow
+            anchors.centerIn: parent
+            spacing: 6
+            MSymbol { text: "desktop_windows"; iconSize: 18; iconColor: root.colOnSurface; symFont: root.symFont() }
+            Text {
+                text: root.currentSessionName
+                font.pixelSize: 14; color: root.colOnSurface
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            MSymbol {
+                text: "expand_more"; iconSize: 16; iconColor: root.colOnSurfaceVariant
+                symFont: root.symFont()
+                visible: sessionModel.count > 1
+                anchors.verticalCenter: parent.verticalCenter
             }
         }
     }
@@ -424,6 +505,7 @@ MouseArea {
         id: virtualKeyboard
         anchors { bottom: parent.bottom; left: parent.left; right: parent.right }
         anchors.bottomMargin: 8; anchors.leftMargin: 24; anchors.rightMargin: 24
+        z: 20
         visible: root.keyboardOpen
         bgColor: root.colSurfaceContainer
         btnColor: Qt.lighter(root.colSurfaceContainer, 1.3)

@@ -32,8 +32,8 @@ class RoundedCorner {
         if (d01 > 0 && d21 > 0) {
             this.d1 = v01.div(d01);
             this.d2 = v21.div(d21);
-            this.cornerRadius = rounding?.radius ?? 0;
-            this.smoothing = rounding?.smoothing ?? 0;
+            this.cornerRadius = (rounding && rounding.radius !== undefined) ? rounding.radius : 0;
+            this.smoothing = (rounding && rounding.smoothing !== undefined) ? rounding.smoothing : 0;
 
             // cosine of angle at p1 is dot product of unit vectors to the other two vertices
             this.cosAngle = this.d1.dotProduct(this.d2);

@@ -185,7 +185,7 @@ class RoundedPolygon {
         const n = vertices.length / 2
         const roundedCorners = []
         for (let i = 0; i < n; i++) {
-            const vtxRounding = perVertexRounding?.[i] ?? rounding
+            const vtxRounding = (perVertexRounding && perVertexRounding[i] !== undefined) ? perVertexRounding[i] : rounding
             const prevIndex = ((i + n - 1) % n) * 2
             const nextIndex = ((i + 1) % n) * 2
             roundedCorners.push(
