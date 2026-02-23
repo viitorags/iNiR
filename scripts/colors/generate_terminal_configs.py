@@ -1689,8 +1689,502 @@ def generate_zed_config(colors, scss_path, output_path):
         return theme
 
     def build_zed_light_theme():
-        # Simply return dark theme - both themes use SAME Material You colors
-        return build_zed_dark_theme()
+        # Light theme uses SAME base colors as dark theme, but with LIGHTER styling
+        # for backgrounds, borders, and elements
+        primary = my_colors.get("primary", "#7aa2f7")
+        secondary = my_colors.get("secondary", "#bb9af7")
+        tertiary = my_colors.get("tertiary", "#9ece6a")
+        error = my_colors.get("error", "#f7768e")
+        surface = my_colors.get("surface", "#1a1b26")
+        surface_low = my_colors.get("surface_container_low", "#24283b")
+        surface_std = my_colors.get("surface_container", "#414868")
+        surface_high = my_colors.get("surface_container_high", "#565f89")
+        outline = my_colors.get("outline", "#565f89")
+        on_surface = my_colors.get("on_surface", "#c0caf5")
+        on_surface_variant = my_colors.get("on_surface_variant", "#9aa5ce")
+
+        # Light theme: lighter backgrounds, same base colors for everything else
+        light_theme = {
+            # Borders - lighter variants
+            "border": hex_with_alpha(adjust_lightness(outline, 1.4), "ff"),
+            "border.variant": hex_with_alpha(adjust_lightness(outline, 1.2), "ff"),
+            "border.focused": hex_with_alpha(primary, "ff"),
+            "border.selected": hex_with_alpha(adjust_lightness(primary, 1.2), "ff"),
+            "border.transparent": "#00000000",
+            "border.disabled": hex_with_alpha(adjust_lightness(outline, 1.1), "ff"),
+            # Backgrounds - LIGHTER variants of same colors
+            "elevated_surface.background": hex_with_alpha(
+                adjust_lightness(surface_low, 1.8), "ff"
+            ),
+            "surface.background": hex_with_alpha(
+                adjust_lightness(surface_low, 1.6), "ff"
+            ),
+            "background": hex_with_alpha(adjust_lightness(surface, 2.0), "ff"),
+            # Elements - lighter variants
+            "element.background": hex_with_alpha(
+                adjust_lightness(surface_low, 1.6), "ff"
+            ),
+            "element.hover": hex_with_alpha(adjust_lightness(surface_std, 1.4), "ff"),
+            "element.active": hex_with_alpha(adjust_lightness(surface_high, 1.2), "ff"),
+            "element.selected": hex_with_alpha(
+                adjust_lightness(surface_high, 1.2), "ff"
+            ),
+            "element.disabled": hex_with_alpha(
+                adjust_lightness(surface_low, 1.5), "ff"
+            ),
+            "drop_target.background": hex_with_alpha(primary, "80"),
+            "ghost_element.background": "#00000000",
+            "ghost_element.hover": hex_with_alpha(
+                adjust_lightness(surface_std, 1.4), "ff"
+            ),
+            "ghost_element.active": hex_with_alpha(
+                adjust_lightness(surface_high, 1.2), "ff"
+            ),
+            "ghost_element.selected": hex_with_alpha(
+                adjust_lightness(surface_high, 1.2), "ff"
+            ),
+            "ghost_element.disabled": hex_with_alpha(
+                adjust_lightness(surface_low, 1.5), "ff"
+            ),
+            # Text - SAME colors as dark theme
+            "text": hex_with_alpha(on_surface, "ff"),
+            "text.muted": hex_with_alpha(on_surface_variant, "ff"),
+            "text.placeholder": hex_with_alpha(
+                adjust_lightness(on_surface_variant, 0.85), "ff"
+            ),
+            "text.disabled": hex_with_alpha(
+                adjust_lightness(on_surface_variant, 0.75), "ff"
+            ),
+            "text.accent": hex_with_alpha(primary, "ff"),
+            # Icons - SAME colors as dark theme
+            "icon": hex_with_alpha(on_surface, "ff"),
+            "icon.muted": hex_with_alpha(on_surface_variant, "ff"),
+            "icon.disabled": hex_with_alpha(
+                adjust_lightness(on_surface_variant, 0.75), "ff"
+            ),
+            "icon.placeholder": hex_with_alpha(on_surface_variant, "ff"),
+            "icon.accent": hex_with_alpha(primary, "ff"),
+            # UI elements - lighter backgrounds
+            "status_bar.background": hex_with_alpha(
+                adjust_lightness(surface, 2.0), "ff"
+            ),
+            "title_bar.background": hex_with_alpha(
+                adjust_lightness(surface, 2.0), "ff"
+            ),
+            "title_bar.inactive_background": hex_with_alpha(
+                adjust_lightness(surface_low, 1.6), "ff"
+            ),
+            "toolbar.background": hex_with_alpha(
+                adjust_lightness(surface_low, 1.6), "ff"
+            ),
+            "tab_bar.background": hex_with_alpha(
+                adjust_lightness(surface_low, 1.6), "ff"
+            ),
+            "tab.inactive_background": hex_with_alpha(
+                adjust_lightness(surface_low, 1.6), "ff"
+            ),
+            "tab.active_background": hex_with_alpha(
+                adjust_lightness(surface, 2.2), "ff"
+            ),
+            "search.match_background": hex_with_alpha(primary, "66"),
+            "search.active_match_background": hex_with_alpha(tertiary, "66"),
+            "panel.background": hex_with_alpha(
+                adjust_lightness(surface_low, 1.6), "ff"
+            ),
+            "panel.focused_border": None,
+            "pane.focused_border": None,
+            # Scrollbar - lighter variants
+            "scrollbar.thumb.background": hex_with_alpha(
+                adjust_lightness(on_surface_variant, 1.3), "4c"
+            ),
+            "scrollbar.thumb.hover_background": hex_with_alpha(
+                adjust_lightness(surface_high, 1.2), "ff"
+            ),
+            "scrollbar.thumb.border": hex_with_alpha(
+                adjust_lightness(surface_std, 1.4), "ff"
+            ),
+            "scrollbar.track.background": "#00000000",
+            "scrollbar.track.border": hex_with_alpha(
+                adjust_lightness(surface_std, 1.4), "ff"
+            ),
+            # Editor - lighter background, SAME text colors
+            "editor.foreground": hex_with_alpha(on_surface, "ff"),
+            "editor.background": hex_with_alpha(adjust_lightness(surface, 2.0), "ff"),
+            "editor.gutter.background": hex_with_alpha(
+                adjust_lightness(surface, 2.0), "ff"
+            ),
+            "editor.subheader.background": hex_with_alpha(
+                adjust_lightness(surface_low, 1.6), "ff"
+            ),
+            "editor.active_line.background": hex_with_alpha(
+                adjust_lightness(surface_low, 1.5), "bf"
+            ),
+            "editor.highlighted_line.background": hex_with_alpha(
+                adjust_lightness(surface_std, 1.3), "ff"
+            ),
+            "editor.line_number": hex_with_alpha(on_surface_variant, "ff"),
+            "editor.active_line_number": hex_with_alpha(on_surface, "ff"),
+            "editor.hover_line_number": hex_with_alpha(on_surface, "ff"),
+            "editor.invisible": hex_with_alpha(on_surface_variant, "ff"),
+            "editor.wrap_guide": hex_with_alpha(on_surface_variant, "0d"),
+            "editor.active_wrap_guide": hex_with_alpha(on_surface_variant, "1a"),
+            "editor.document_highlight.read_background": hex_with_alpha(primary, "1a"),
+            "editor.document_highlight.write_background": hex_with_alpha(
+                adjust_lightness(surface_std, 1.2), "66"
+            ),
+            # Terminal - lighter background, SAME text colors
+            "terminal.background": hex_with_alpha(adjust_lightness(surface, 2.0), "ff"),
+            "terminal.foreground": hex_with_alpha(on_surface, "ff"),
+            "terminal.bright_foreground": hex_with_alpha(on_surface, "ff"),
+            "terminal.dim_foreground": hex_with_alpha(
+                adjust_lightness(on_surface, 0.7), "ff"
+            ),
+            # Links and version control - SAME colors
+            "link_text.hover": hex_with_alpha(primary, "ff"),
+            "version_control.added": hex_with_alpha(tertiary, "ff"),
+            "version_control.modified": hex_with_alpha(primary, "ff"),
+            "version_control.word_added": hex_with_alpha(tertiary, "59"),
+            "version_control.word_deleted": hex_with_alpha(error, "cc"),
+            "version_control.deleted": hex_with_alpha(error, "ff"),
+            "version_control.conflict_marker.ours": hex_with_alpha(tertiary, "1a"),
+            "version_control.conflict_marker.theirs": hex_with_alpha(primary, "1a"),
+            # Diagnostic colors - SAME base colors with lighter backgrounds
+            "conflict": hex_with_alpha(tertiary, "ff"),
+            "conflict.background": hex_with_alpha(tertiary, "1a"),
+            "conflict.border": hex_with_alpha(adjust_lightness(tertiary, 1.2), "ff"),
+            "created": hex_with_alpha(tertiary, "ff"),
+            "created.background": hex_with_alpha(tertiary, "1a"),
+            "created.border": hex_with_alpha(adjust_lightness(tertiary, 1.2), "ff"),
+            "deleted": hex_with_alpha(error, "ff"),
+            "deleted.background": hex_with_alpha(error, "1a"),
+            "deleted.border": hex_with_alpha(adjust_lightness(error, 1.2), "ff"),
+            "error": hex_with_alpha(error, "ff"),
+            "error.background": hex_with_alpha(error, "1a"),
+            "error.border": hex_with_alpha(adjust_lightness(error, 1.2), "ff"),
+            "hidden": hex_with_alpha(on_surface_variant, "ff"),
+            "hidden.background": hex_with_alpha(
+                adjust_lightness(on_surface_variant, 1.3), "1a"
+            ),
+            "hidden.border": hex_with_alpha(adjust_lightness(outline, 1.2), "ff"),
+            "hint": hex_with_alpha(primary, "ff"),
+            "hint.background": hex_with_alpha(primary, "1a"),
+            "hint.border": hex_with_alpha(adjust_lightness(primary, 1.2), "ff"),
+            "ignored": hex_with_alpha(on_surface_variant, "ff"),
+            "ignored.background": hex_with_alpha(
+                adjust_lightness(on_surface_variant, 1.3), "1a"
+            ),
+            "ignored.border": hex_with_alpha(adjust_lightness(outline, 1.2), "ff"),
+            "info": hex_with_alpha(primary, "ff"),
+            "info.background": hex_with_alpha(primary, "1a"),
+            "info.border": hex_with_alpha(adjust_lightness(primary, 1.2), "ff"),
+            "modified": hex_with_alpha(primary, "ff"),
+            "modified.background": hex_with_alpha(primary, "1a"),
+            "modified.border": hex_with_alpha(adjust_lightness(primary, 1.2), "ff"),
+            "predictive": hex_with_alpha(secondary, "ff"),
+            "predictive.background": hex_with_alpha(secondary, "1a"),
+            "predictive.border": hex_with_alpha(adjust_lightness(secondary, 1.2), "ff"),
+            "renamed": hex_with_alpha(primary, "ff"),
+            "renamed.background": hex_with_alpha(primary, "1a"),
+            "renamed.border": hex_with_alpha(adjust_lightness(primary, 1.2), "ff"),
+            "success": hex_with_alpha(tertiary, "ff"),
+            "success.background": hex_with_alpha(tertiary, "1a"),
+            "success.border": hex_with_alpha(adjust_lightness(tertiary, 1.2), "ff"),
+            "unreachable": hex_with_alpha(on_surface_variant, "ff"),
+            "unreachable.background": hex_with_alpha(
+                adjust_lightness(on_surface_variant, 1.3), "1a"
+            ),
+            "unreachable.border": hex_with_alpha(adjust_lightness(outline, 1.2), "ff"),
+            "warning": hex_with_alpha(tertiary, "ff"),
+            "warning.background": hex_with_alpha(tertiary, "1a"),
+            "warning.border": hex_with_alpha(adjust_lightness(tertiary, 1.2), "ff"),
+        }
+
+        # Terminal colors - SAME as dark theme
+        for i in range(16):
+            term_color = term_colors.get(f"term{i}", "#ffffff")
+            light_theme[f"terminal.ansi.black"] = (
+                hex_with_alpha(term_colors.get("term0", "#000000"), "ff")
+                if i == 0
+                else light_theme.get("terminal.ansi.black")
+            )
+            light_theme[f"terminal.ansi.bright_black"] = (
+                hex_with_alpha(term_colors.get("term8", "#555555"), "ff")
+                if i == 8
+                else light_theme.get("terminal.ansi.bright_black")
+            )
+            light_theme[f"terminal.ansi.dim_black"] = (
+                hex_with_alpha(
+                    adjust_lightness(term_colors.get("term0", "#000000"), 0.7), "ff"
+                )
+                if i == 0
+                else light_theme.get("terminal.ansi.dim_black")
+            )
+
+        color_map = {
+            "red": 1,
+            "bright_red": 9,
+            "dim_red": 1,
+            "green": 2,
+            "bright_green": 10,
+            "dim_green": 2,
+            "yellow": 3,
+            "bright_yellow": 11,
+            "dim_yellow": 3,
+            "blue": 4,
+            "bright_blue": 12,
+            "dim_blue": 4,
+            "magenta": 5,
+            "bright_magenta": 13,
+            "dim_magenta": 5,
+            "cyan": 6,
+            "bright_cyan": 14,
+            "dim_cyan": 6,
+            "white": 7,
+            "bright_white": 15,
+            "dim_white": 7,
+        }
+
+        for name, idx in color_map.items():
+            base_color = term_colors.get(f"term{idx}", "#ffffff")
+            if "bright" in name:
+                color = adjust_lightness(base_color, 1.15)
+            elif "dim" in name:
+                color = adjust_lightness(base_color, 0.85)
+            else:
+                color = base_color
+            light_theme[f"terminal.ansi.{name}"] = hex_with_alpha(color, "ff")
+
+        # Players - SAME colors as dark theme
+        player_colors = [primary, error, tertiary, secondary]
+        light_theme["players"] = [
+            {
+                "cursor": hex_with_alpha(color, "ff"),
+                "background": hex_with_alpha(color, "ff"),
+                "selection": hex_with_alpha(color, "3d"),
+            }
+            for color in player_colors
+        ]
+
+        # Syntax highlighting - SAME colors as dark theme
+        light_theme["syntax"] = {
+            "attribute": {
+                "color": hex_with_alpha(primary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "boolean": {
+                "color": hex_with_alpha(tertiary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "comment": {
+                "color": hex_with_alpha(on_surface_variant, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "comment.doc": {
+                "color": hex_with_alpha(on_surface_variant, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "constant": {
+                "color": hex_with_alpha(tertiary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "constructor": {
+                "color": hex_with_alpha(primary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "embedded": {
+                "color": hex_with_alpha(on_surface, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "emphasis": {
+                "color": hex_with_alpha(primary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "emphasis.strong": {
+                "color": hex_with_alpha(tertiary, "ff"),
+                "font_style": None,
+                "font_weight": 700,
+            },
+            "enum": {
+                "color": hex_with_alpha(secondary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "function": {
+                "color": hex_with_alpha(primary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "hint": {
+                "color": hex_with_alpha(primary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "keyword": {
+                "color": hex_with_alpha(secondary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "label": {
+                "color": hex_with_alpha(primary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "link_text": {
+                "color": hex_with_alpha(primary, "ff"),
+                "font_style": "normal",
+                "font_weight": None,
+            },
+            "link_uri": {
+                "color": hex_with_alpha(secondary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "namespace": {
+                "color": hex_with_alpha(on_surface, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "number": {
+                "color": hex_with_alpha(tertiary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "operator": {
+                "color": hex_with_alpha(secondary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "predictive": {
+                "color": hex_with_alpha(secondary, "ff"),
+                "font_style": "italic",
+                "font_weight": None,
+            },
+            "preproc": {
+                "color": hex_with_alpha(on_surface, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "primary": {
+                "color": hex_with_alpha(on_surface, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "property": {
+                "color": hex_with_alpha(primary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "punctuation": {
+                "color": hex_with_alpha(on_surface, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "punctuation.bracket": {
+                "color": hex_with_alpha(on_surface, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "punctuation.delimiter": {
+                "color": hex_with_alpha(on_surface, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "punctuation.list_marker": {
+                "color": hex_with_alpha(primary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "punctuation.markup": {
+                "color": hex_with_alpha(primary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "punctuation.special": {
+                "color": hex_with_alpha(error, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "selector": {
+                "color": hex_with_alpha(tertiary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "selector.pseudo": {
+                "color": hex_with_alpha(primary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "string": {
+                "color": hex_with_alpha(tertiary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "string.escape": {
+                "color": hex_with_alpha(on_surface_variant, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "string.regex": {
+                "color": hex_with_alpha(tertiary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "string.special": {
+                "color": hex_with_alpha(tertiary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "string.special.symbol": {
+                "color": hex_with_alpha(tertiary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "tag": {
+                "color": hex_with_alpha(primary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "text.literal": {
+                "color": hex_with_alpha(tertiary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "title": {
+                "color": hex_with_alpha(primary, "ff"),
+                "font_style": None,
+                "font_weight": 400,
+            },
+            "type": {
+                "color": hex_with_alpha(secondary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "variable": {
+                "color": hex_with_alpha(on_surface, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "variable.special": {
+                "color": hex_with_alpha(tertiary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+            "variant": {
+                "color": hex_with_alpha(primary, "ff"),
+                "font_style": None,
+                "font_weight": None,
+            },
+        }
+
+        return light_theme
 
     dark_style = build_zed_dark_theme()
     light_style = build_zed_light_theme()
