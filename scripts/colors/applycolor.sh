@@ -93,7 +93,7 @@ apply_terminal_configs() {
   # Single source of truth for all supported targets.
   # Mirrors TERMINAL_REGISTRY in generate_terminal_configs.py.
   # To add a new target: add it here + add generate_X_config() and registry entry in the Python script.
-  local all_supported=(kitty alacritty foot wezterm ghostty konsole starship btop lazygit yazi zed)
+  local all_supported=(kitty alacritty foot wezterm ghostty konsole starship btop lazygit yazi)
 
   # Build enabled list: config-enabled (default true) AND installed
   local enabled_terminals=()
@@ -103,12 +103,7 @@ apply_terminal_configs() {
       term_enabled=$(jq -r ".appearance.wallpaperTheming.terminals.${term} // true" "$CONFIG_FILE" 2>/dev/null || echo "true")
     fi
 
-    # Special handling for Zed (check if config directory exists)
-    if [ "$term" == "zed" ]; then
-      [[ "$term_enabled" == "true" ]] && [[ -d "$HOME/.config/zed" ]] && enabled_terminals+=("$term")
-    else
-      [[ "$term_enabled" == "true" ]] && command -v "$term" &>/dev/null && enabled_terminals+=("$term")
-    fi
+    [[ "$term_enabled" == "true" ]] && command -v "$term" &>/dev/null && enabled_terminals+=("$term")
   done
 
   if [ ${#enabled_terminals[@]} -eq 0 ]; then
@@ -210,6 +205,72 @@ apply_qt() {
   python "$CONFIG_DIR/scripts/kvantum/changeAdwColors.py" # apply config colors
 }
 
+apply_code_editors() {
+  # Generate code editor themes (Zed, VSCode, etc.) and update Zed settings
+  local log_file="$STATE_DIR/user/generated/code_editor_themes.log"
+
+  if [ ! -f "$STATE_DIR/user/generated/material_colors.scss" ]; then
+    echo "[code-editors] material_colors.scss not found. Skipping." | tee -a "$log_file" 2>/dev/null
+    return
+  fi
+
+  # Check if Zed is installed and enabled
+  local enable_zed="true"
+  if [ -f "$CONFIG_FILE" ]; then
+    enable_zed=$(jq -r '.appearance.wallpaperTheming.enableZed // true' "$CONFIG_FILE" 2>/dev/null || echo "true")
+  fi
+
+  if [[ "$enable_zed" == "true" ]] && [[ -d "$HOME/.config/zed" ]]; then
+    echo "[code-editors] Generating Zed theme..." | tee -a "$log_file" 2>/dev/null
+
+    # Run the Python script to generate Zed config
+    local python_cmd="python3"
+    local _ac_venv
+    if [[ -n "${ILLOGICAL_IMPULSE_VIRTUAL_ENV:-}" ]]; then
+      _ac_venv="$(eval echo "$ILLOGICAL_IMPULSE_VIRTUAL_ENV")"
+    else
+      _ac_venv="$HOME/.local/state/quickshell/.venv"
+    fi
+    local venv_python="$_ac_venv/bin/python3"
+    if [[ -x "$venv_python" ]]; then
+      python_cmd="$venv_python"
+    fi
+
+    if command -v "$python_cmd" &>/dev/null || [[ -x "$python_cmd" ]]; then
+      "$python_cmd" "$SCRIPT_DIR/generate_terminal_configs.py" \
+        --scss "$STATE_DIR/user/generated/material_colors.scss" \
+        --terminals zed >> "$log_file" 2>&1
+
+      if [ $? -eq 0 ]; then
+        echo "[code-editors] Zed theme generated" >> "$log_file" 2>/dev/null
+
+        # Update Zed settings.json to use iNiR themes as defaults
+        local zed_settings="$HOME/.config/zed/settings.json"
+        if [ -f "$zed_settings" ]; then
+          # Check if theme section exists
+          if ! jq -e '.theme' "$zed_settings" 2>/dev/null; then
+            # Add theme section if it doesn't exist
+            jq '. + {theme: {mode: "system", light: "iNiR Light", dark: "iNiR Dark"}}' "$zed_settings" > "$zed_settings.tmp" && mv "$zed_settings.tmp" "$zed_settings"
+            echo "[code-editors] Zed settings.json updated with iNiR themes" >> "$log_file" 2>/dev/null
+          else
+            # Update existing theme section
+            jq '.theme.light = "iNiR Light" | .theme.dark = "iNiR Dark"' "$zed_settings" > "$zed_settings.tmp" && mv "$zed_settings.tmp" "$zed_settings"
+            echo "[code-editors] Zed settings.json updated with iNiR themes" >> "$log_file" 2>/dev/null
+          fi
+        else
+          # Create new settings.json with theme section
+          echo '{"theme": {"mode": "system", "light": "iNiR Light", "dark": "iNiR Dark"}}' > "$zed_settings"
+          echo "[code-editors] Zed settings.json created with iNiR themes" >> "$log_file" 2>/dev/null
+        fi
+      else
+        echo "[code-editors] ERROR: Failed to generate Zed theme" >> "$log_file" 2>/dev/null
+      fi
+    else
+      echo "[code-editors] ERROR: Python not found ($python_cmd). Cannot generate Zed theme." >> "$log_file" 2>/dev/null
+    fi
+  fi
+}
+
 apply_gtk_kde() {
   # apply-gtk-theme.sh reads colors.json (matugen's output) directly
   # It generates: kdeglobals, Darkly.colors, pywalfox colors
@@ -243,6 +304,8 @@ if [ -f "$CONFIG_FILE" ]; then
 else
   apply_gtk_kde &
 fi
+
+
 
 # Sync ii-pixel SDDM theme colors (if installed)
 SDDM_SYNC_SCRIPT="$SCRIPT_DIR/../sddm/sync-pixel-sddm.py"
