@@ -1234,18 +1234,76 @@ def generate_zed_config(colors, scss_path, output_path):
 
         return f"#{int(r * 255):02x}{int(g * 255):02x}{int(b * 255):02x}"
 
+    # Auto-detect whether colors.json is a dark or light scheme palette
+    # by checking the luminance of the surface color
+    def _luminance(hex_color):
+        hex_color = hex_color.lstrip("#")
+        r = int(hex_color[0:2], 16)
+        g = int(hex_color[2:4], 16)
+        b = int(hex_color[4:6], 16)
+        return r * 0.299 + g * 0.587 + b * 0.114
+
+    _surface_lum = _luminance(my_colors.get("surface", "#000000"))
+    _is_dark_palette = _surface_lum < 128
+
+    # Resolve tokens for dark theme backgrounds/text
+    if _is_dark_palette:
+        # Palette is dark-scheme: surface tokens are dark, use them directly for dark theme
+        _dk_surface = my_colors.get("surface", "#1a1b26")
+        _dk_surface_low = my_colors.get("surface_container_low", "#24283b")
+        _dk_surface_std = my_colors.get("surface_container", "#414868")
+        _dk_surface_high = my_colors.get("surface_container_high", "#565f89")
+        _dk_surface_highest = my_colors.get("surface_container_highest", "#3d3231")
+        _dk_on_surface = my_colors.get("on_surface", "#c0caf5")
+        _dk_on_surface_variant = my_colors.get("on_surface_variant", "#9aa5ce")
+        _dk_outline = my_colors.get("outline", "#565f89")
+        _dk_outline_variant = my_colors.get("outline_variant", "#534341")
+        # Light theme: use inverse tokens (they flip to light bg / dark text)
+        _lt_surface = my_colors.get("inverse_surface", "#f1dedc")
+        _lt_on_surface = my_colors.get("inverse_on_surface", "#392e2c")
+        _lt_on_surface_variant = my_colors.get("outline_variant", "#534341")
+        _lt_outline = my_colors.get("outline", "#565f89")
+        _lt_outline_variant = my_colors.get("outline_variant", "#534341")
+        # Derive light container variants from inverse_surface
+        _lt_surface_low = adjust_lightness(_lt_surface, 0.97)
+        _lt_surface_std = adjust_lightness(_lt_surface, 0.94)
+        _lt_surface_high = adjust_lightness(_lt_surface, 0.91)
+        _lt_surface_highest = adjust_lightness(_lt_surface, 0.88)
+    else:
+        # Palette is light-scheme: surface tokens are light, use them for light theme
+        _lt_surface = my_colors.get("surface", "#fff8f7")
+        _lt_surface_low = my_colors.get("surface_container_low", "#fff0f2")
+        _lt_surface_std = my_colors.get("surface_container", "#fbeaec")
+        _lt_surface_high = my_colors.get("surface_container_high", "#f5e4e6")
+        _lt_surface_highest = my_colors.get("surface_container_highest", "#efdee0")
+        _lt_on_surface = my_colors.get("on_surface", "#22191b")
+        _lt_on_surface_variant = my_colors.get("on_surface_variant", "#514346")
+        _lt_outline = my_colors.get("outline", "#847376")
+        _lt_outline_variant = my_colors.get("outline_variant", "#d6c2c4")
+        # Dark theme: use inverse tokens (they flip to dark bg / light text)
+        _dk_surface = my_colors.get("inverse_surface", "#382e30")
+        _dk_on_surface = my_colors.get("inverse_on_surface", "#feedef")
+        _dk_on_surface_variant = my_colors.get("outline_variant", "#d6c2c4")
+        _dk_outline = my_colors.get("outline", "#847376")
+        _dk_outline_variant = my_colors.get("outline_variant", "#d6c2c4")
+        # Derive dark container variants from inverse_surface
+        _dk_surface_low = adjust_lightness(_dk_surface, 1.15)
+        _dk_surface_std = adjust_lightness(_dk_surface, 1.35)
+        _dk_surface_high = adjust_lightness(_dk_surface, 1.55)
+        _dk_surface_highest = adjust_lightness(_dk_surface, 1.75)
+
     def build_zed_dark_theme():
         primary = my_colors.get("primary", "#7aa2f7")
         secondary = my_colors.get("secondary", "#bb9af7")
         tertiary = my_colors.get("tertiary", "#9ece6a")
         error = my_colors.get("error", "#f7768e")
-        surface = my_colors.get("surface", "#1a1b26")
-        surface_low = my_colors.get("surface_container_low", "#24283b")
-        surface_std = my_colors.get("surface_container", "#414868")
-        surface_high = my_colors.get("surface_container_high", "#565f89")
-        outline = my_colors.get("outline", "#565f89")
-        on_surface = my_colors.get("on_surface", "#c0caf5")
-        on_surface_variant = my_colors.get("on_surface_variant", "#9aa5ce")
+        surface = _dk_surface
+        surface_low = _dk_surface_low
+        surface_std = _dk_surface_std
+        surface_high = _dk_surface_high
+        outline = _dk_outline
+        on_surface = _dk_on_surface
+        on_surface_variant = _dk_on_surface_variant
 
         theme = {
             "border": hex_with_alpha(outline, "ff"),
@@ -1689,25 +1747,22 @@ def generate_zed_config(colors, scss_path, output_path):
         return theme
 
     def build_zed_light_theme():
-        # Light theme uses INVERSE colors designed for light mode
-        # These provide proper contrast for a light interface
+        # Light theme uses resolved _lt_* tokens (auto-detected from palette)
         primary = my_colors.get("primary", "#7aa2f7")
         secondary = my_colors.get("secondary", "#bb9af7")
         tertiary = my_colors.get("tertiary", "#9ece6a")
         error = my_colors.get("error", "#f7768e")
-        # Use inverse surface colors for light mode backgrounds
-        inverse_surface = my_colors.get("inverse_surface", "#f1dedc")
-        inverse_on_surface = my_colors.get("inverse_on_surface", "#392e2c")
-        outline = my_colors.get("outline", "#565f89")
-        outline_variant = my_colors.get("outline_variant", "#534341")
-        # Keep accent colors the same
-        on_primary = my_colors.get("on_primary", "#1a1b26")
-        surface_container_highest = my_colors.get(
-            "surface_container_highest", "#3d3231"
-        )
+        surface = _lt_surface
+        surface_low = _lt_surface_low
+        surface_std = _lt_surface_std
+        surface_high = _lt_surface_high
+        surface_highest = _lt_surface_highest
+        on_surface = _lt_on_surface
+        on_surface_variant = _lt_on_surface_variant
+        outline = _lt_outline
+        outline_variant = _lt_outline_variant
+        on_primary = my_colors.get("on_primary", "#ffffff")
 
-        # For light mode, we need to adjust the container colors to be light
-        # Use inverse_surface as the base and create lighter variants
         def lighten(color, factor=1.15):
             return adjust_lightness(color, factor)
 
@@ -1716,115 +1771,85 @@ def generate_zed_config(colors, scss_path, output_path):
 
         # Light theme: light backgrounds, dark text, same accent colors
         light_theme = {
-            # Borders - use outline_variant (lighter than outline for light mode)
+            # Borders
             "border": hex_with_alpha(outline_variant, "ff"),
             "border.variant": hex_with_alpha(lighten(outline_variant, 1.1), "ff"),
             "border.focused": hex_with_alpha(primary, "ff"),
             "border.selected": hex_with_alpha(darken(primary, 0.9), "ff"),
             "border.transparent": "#00000000",
             "border.disabled": hex_with_alpha(lighten(outline_variant, 1.2), "ff"),
-            # Backgrounds - LIGHT colors using inverse_surface
-            "elevated_surface.background": hex_with_alpha(
-                lighten(inverse_surface, 1.08), "ff"
-            ),
-            "surface.background": hex_with_alpha(lighten(inverse_surface, 1.05), "ff"),
-            "background": hex_with_alpha(inverse_surface, "ff"),
-            # Elements - slightly darker than background for contrast
-            "element.background": hex_with_alpha(darken(inverse_surface, 0.97), "ff"),
-            "element.hover": hex_with_alpha(darken(inverse_surface, 0.94), "ff"),
-            "element.active": hex_with_alpha(darken(inverse_surface, 0.90), "ff"),
-            "element.selected": hex_with_alpha(darken(inverse_surface, 0.92), "ff"),
-            "element.disabled": hex_with_alpha(lighten(inverse_surface, 1.02), "ff"),
+            # Backgrounds - use actual surface colors (already light)
+            "elevated_surface.background": hex_with_alpha(surface_low, "ff"),
+            "surface.background": hex_with_alpha(surface_low, "ff"),
+            "background": hex_with_alpha(surface, "ff"),
+            # Elements - use container hierarchy for contrast
+            "element.background": hex_with_alpha(surface_std, "ff"),
+            "element.hover": hex_with_alpha(surface_high, "ff"),
+            "element.active": hex_with_alpha(surface_highest, "ff"),
+            "element.selected": hex_with_alpha(surface_highest, "ff"),
+            "element.disabled": hex_with_alpha(surface_low, "ff"),
             "drop_target.background": hex_with_alpha(primary, "30"),
             "ghost_element.background": "#00000000",
-            "ghost_element.hover": hex_with_alpha(darken(inverse_surface, 0.94), "ff"),
-            "ghost_element.active": hex_with_alpha(darken(inverse_surface, 0.90), "ff"),
-            "ghost_element.selected": hex_with_alpha(
-                darken(inverse_surface, 0.92), "ff"
-            ),
-            "ghost_element.disabled": hex_with_alpha(
-                lighten(inverse_surface, 1.02), "ff"
-            ),
-            # Text - DARK colors for light mode (using inverse_on_surface)
-            "text": hex_with_alpha(inverse_on_surface, "ff"),
-            "text.muted": hex_with_alpha(darken(inverse_on_surface, 0.7), "ff"),
-            "text.placeholder": hex_with_alpha(darken(inverse_on_surface, 0.5), "ff"),
-            "text.disabled": hex_with_alpha(darken(inverse_on_surface, 0.4), "ff"),
+            "ghost_element.hover": hex_with_alpha(surface_high, "ff"),
+            "ghost_element.active": hex_with_alpha(surface_highest, "ff"),
+            "ghost_element.selected": hex_with_alpha(surface_highest, "ff"),
+            "ghost_element.disabled": hex_with_alpha(surface_low, "ff"),
+            # Text - dark colors for light mode (on_surface is already dark)
+            "text": hex_with_alpha(on_surface, "ff"),
+            "text.muted": hex_with_alpha(on_surface_variant, "ff"),
+            "text.placeholder": hex_with_alpha(lighten(on_surface_variant, 1.3), "ff"),
+            "text.disabled": hex_with_alpha(lighten(on_surface_variant, 1.5), "ff"),
             "text.accent": hex_with_alpha(primary, "ff"),
-            # Icons - DARK colors for light mode
-            "icon": hex_with_alpha(inverse_on_surface, "ff"),
-            "icon.muted": hex_with_alpha(darken(inverse_on_surface, 0.7), "ff"),
-            "icon.disabled": hex_with_alpha(darken(inverse_on_surface, 0.4), "ff"),
-            "icon.placeholder": hex_with_alpha(darken(inverse_on_surface, 0.6), "ff"),
+            # Icons - dark colors for light mode
+            "icon": hex_with_alpha(on_surface, "ff"),
+            "icon.muted": hex_with_alpha(on_surface_variant, "ff"),
+            "icon.disabled": hex_with_alpha(lighten(on_surface_variant, 1.5), "ff"),
+            "icon.placeholder": hex_with_alpha(on_surface_variant, "ff"),
             "icon.accent": hex_with_alpha(primary, "ff"),
             # UI elements - light backgrounds
-            "status_bar.background": hex_with_alpha(inverse_surface, "ff"),
-            "title_bar.background": hex_with_alpha(inverse_surface, "ff"),
-            "title_bar.inactive_background": hex_with_alpha(
-                lighten(inverse_surface, 1.05), "ff"
-            ),
-            "toolbar.background": hex_with_alpha(lighten(inverse_surface, 1.05), "ff"),
-            "tab_bar.background": hex_with_alpha(lighten(inverse_surface, 1.05), "ff"),
-            "tab.inactive_background": hex_with_alpha(
-                lighten(inverse_surface, 1.05), "ff"
-            ),
-            "tab.active_background": hex_with_alpha(
-                lighten(inverse_surface, 1.12), "ff"
-            ),
+            "status_bar.background": hex_with_alpha(surface, "ff"),
+            "title_bar.background": hex_with_alpha(surface, "ff"),
+            "title_bar.inactive_background": hex_with_alpha(surface_low, "ff"),
+            "toolbar.background": hex_with_alpha(surface_low, "ff"),
+            "tab_bar.background": hex_with_alpha(surface_low, "ff"),
+            "tab.inactive_background": hex_with_alpha(surface_low, "ff"),
+            "tab.active_background": hex_with_alpha(surface, "ff"),
             "search.match_background": hex_with_alpha(primary, "40"),
             "search.active_match_background": hex_with_alpha(tertiary, "40"),
-            "panel.background": hex_with_alpha(lighten(inverse_surface, 1.05), "ff"),
+            "panel.background": hex_with_alpha(surface_low, "ff"),
             "panel.focused_border": None,
             "pane.focused_border": None,
-            # Scrollbar - subtle dark on light
-            "scrollbar.thumb.background": hex_with_alpha(
-                darken(inverse_on_surface, 0.3), "4c"
-            ),
+            # Scrollbar
+            "scrollbar.thumb.background": hex_with_alpha(on_surface_variant, "4c"),
             "scrollbar.thumb.hover_background": hex_with_alpha(
-                darken(inverse_on_surface, 0.4), "ff"
+                on_surface_variant, "80"
             ),
-            "scrollbar.thumb.border": hex_with_alpha(
-                darken(inverse_on_surface, 0.35), "ff"
-            ),
+            "scrollbar.thumb.border": hex_with_alpha(on_surface_variant, "60"),
             "scrollbar.track.background": "#00000000",
             "scrollbar.track.border": hex_with_alpha(outline_variant, "ff"),
             # Editor - light background, dark text
-            "editor.foreground": hex_with_alpha(inverse_on_surface, "ff"),
-            "editor.background": hex_with_alpha(lighten(inverse_surface, 1.12), "ff"),
-            "editor.gutter.background": hex_with_alpha(
-                lighten(inverse_surface, 1.12), "ff"
-            ),
-            "editor.subheader.background": hex_with_alpha(
-                darken(inverse_surface, 0.97), "ff"
-            ),
-            "editor.active_line.background": hex_with_alpha(
-                darken(inverse_surface, 0.97), "bf"
-            ),
-            "editor.highlighted_line.background": hex_with_alpha(
-                darken(inverse_surface, 0.94), "ff"
-            ),
-            "editor.line_number": hex_with_alpha(darken(inverse_on_surface, 0.5), "ff"),
-            "editor.active_line_number": hex_with_alpha(inverse_on_surface, "ff"),
-            "editor.hover_line_number": hex_with_alpha(
-                darken(inverse_on_surface, 0.7), "ff"
-            ),
-            "editor.invisible": hex_with_alpha(darken(inverse_on_surface, 0.4), "ff"),
-            "editor.wrap_guide": hex_with_alpha(darken(inverse_on_surface, 0.2), "0d"),
-            "editor.active_wrap_guide": hex_with_alpha(
-                darken(inverse_on_surface, 0.3), "1a"
-            ),
+            "editor.foreground": hex_with_alpha(on_surface, "ff"),
+            "editor.background": hex_with_alpha(surface, "ff"),
+            "editor.gutter.background": hex_with_alpha(surface, "ff"),
+            "editor.subheader.background": hex_with_alpha(surface_low, "ff"),
+            "editor.active_line.background": hex_with_alpha(surface_std, "bf"),
+            "editor.highlighted_line.background": hex_with_alpha(surface_high, "ff"),
+            "editor.line_number": hex_with_alpha(on_surface_variant, "ff"),
+            "editor.active_line_number": hex_with_alpha(on_surface, "ff"),
+            "editor.hover_line_number": hex_with_alpha(darken(on_surface, 0.8), "ff"),
+            "editor.invisible": hex_with_alpha(lighten(on_surface_variant, 1.3), "ff"),
+            "editor.wrap_guide": hex_with_alpha(on_surface_variant, "0d"),
+            "editor.active_wrap_guide": hex_with_alpha(on_surface_variant, "1a"),
             "editor.document_highlight.read_background": hex_with_alpha(primary, "20"),
             "editor.document_highlight.write_background": hex_with_alpha(
-                darken(inverse_on_surface, 0.2), "66"
+                on_surface_variant, "66"
             ),
             # Terminal - light background, dark text
-            "terminal.background": hex_with_alpha(lighten(inverse_surface, 1.12), "ff"),
-            "terminal.foreground": hex_with_alpha(inverse_on_surface, "ff"),
-            "terminal.bright_foreground": hex_with_alpha(inverse_on_surface, "ff"),
-            "terminal.dim_foreground": hex_with_alpha(
-                darken(inverse_on_surface, 0.5), "ff"
-            ),
-            # Links and version control - same accent colors, lighter backgrounds
+            "terminal.background": hex_with_alpha(surface, "ff"),
+            "terminal.foreground": hex_with_alpha(on_surface, "ff"),
+            "terminal.bright_foreground": hex_with_alpha(on_surface, "ff"),
+            "terminal.dim_foreground": hex_with_alpha(on_surface_variant, "ff"),
+            # Links and version control
             "link_text.hover": hex_with_alpha(primary, "ff"),
             "version_control.added": hex_with_alpha(darken(tertiary, 0.8), "ff"),
             "version_control.modified": hex_with_alpha(darken(primary, 0.85), "ff"),
@@ -1833,7 +1858,7 @@ def generate_zed_config(colors, scss_path, output_path):
             "version_control.deleted": hex_with_alpha(darken(error, 0.85), "ff"),
             "version_control.conflict_marker.ours": hex_with_alpha(tertiary, "25"),
             "version_control.conflict_marker.theirs": hex_with_alpha(primary, "25"),
-            # Diagnostic colors - dark text on light backgrounds
+            # Diagnostic colors
             "conflict": hex_with_alpha(darken(tertiary, 0.8), "ff"),
             "conflict.background": hex_with_alpha(tertiary, "18"),
             "conflict.border": hex_with_alpha(darken(tertiary, 0.7), "ff"),
@@ -1846,16 +1871,14 @@ def generate_zed_config(colors, scss_path, output_path):
             "error": hex_with_alpha(darken(error, 0.85), "ff"),
             "error.background": hex_with_alpha(error, "18"),
             "error.border": hex_with_alpha(darken(error, 0.7), "ff"),
-            "hidden": hex_with_alpha(darken(inverse_on_surface, 0.6), "ff"),
-            "hidden.background": hex_with_alpha(darken(inverse_on_surface, 0.15), "18"),
+            "hidden": hex_with_alpha(on_surface_variant, "ff"),
+            "hidden.background": hex_with_alpha(on_surface_variant, "18"),
             "hidden.border": hex_with_alpha(outline_variant, "ff"),
             "hint": hex_with_alpha(darken(primary, 0.8), "ff"),
             "hint.background": hex_with_alpha(primary, "18"),
             "hint.border": hex_with_alpha(darken(primary, 0.7), "ff"),
-            "ignored": hex_with_alpha(darken(inverse_on_surface, 0.5), "ff"),
-            "ignored.background": hex_with_alpha(
-                darken(inverse_on_surface, 0.15), "18"
-            ),
+            "ignored": hex_with_alpha(on_surface_variant, "ff"),
+            "ignored.background": hex_with_alpha(on_surface_variant, "18"),
             "ignored.border": hex_with_alpha(outline_variant, "ff"),
             "info": hex_with_alpha(darken(primary, 0.85), "ff"),
             "info.background": hex_with_alpha(primary, "18"),
@@ -1872,10 +1895,8 @@ def generate_zed_config(colors, scss_path, output_path):
             "success": hex_with_alpha(darken(tertiary, 0.8), "ff"),
             "success.background": hex_with_alpha(tertiary, "18"),
             "success.border": hex_with_alpha(darken(tertiary, 0.7), "ff"),
-            "unreachable": hex_with_alpha(darken(inverse_on_surface, 0.6), "ff"),
-            "unreachable.background": hex_with_alpha(
-                darken(inverse_on_surface, 0.15), "18"
-            ),
+            "unreachable": hex_with_alpha(on_surface_variant, "ff"),
+            "unreachable.background": hex_with_alpha(on_surface_variant, "18"),
             "unreachable.border": hex_with_alpha(outline_variant, "ff"),
             "warning": hex_with_alpha(darken(tertiary, 0.85), "ff"),
             "warning.background": hex_with_alpha(tertiary, "18"),
@@ -1963,12 +1984,12 @@ def generate_zed_config(colors, scss_path, output_path):
                 "font_weight": None,
             },
             "comment": {
-                "color": hex_with_alpha(darken(inverse_on_surface, 0.45), "ff"),
+                "color": hex_with_alpha(lighten(on_surface_variant, 1.3), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
             "comment.doc": {
-                "color": hex_with_alpha(darken(inverse_on_surface, 0.5), "ff"),
+                "color": hex_with_alpha(lighten(on_surface_variant, 1.2), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
@@ -1983,7 +2004,7 @@ def generate_zed_config(colors, scss_path, output_path):
                 "font_weight": None,
             },
             "embedded": {
-                "color": hex_with_alpha(inverse_on_surface, "ff"),
+                "color": hex_with_alpha(on_surface, "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
@@ -2033,7 +2054,7 @@ def generate_zed_config(colors, scss_path, output_path):
                 "font_weight": None,
             },
             "namespace": {
-                "color": hex_with_alpha(inverse_on_surface, "ff"),
+                "color": hex_with_alpha(on_surface, "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
@@ -2053,12 +2074,12 @@ def generate_zed_config(colors, scss_path, output_path):
                 "font_weight": None,
             },
             "preproc": {
-                "color": hex_with_alpha(inverse_on_surface, "ff"),
+                "color": hex_with_alpha(on_surface, "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
             "primary": {
-                "color": hex_with_alpha(inverse_on_surface, "ff"),
+                "color": hex_with_alpha(on_surface, "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
@@ -2068,17 +2089,17 @@ def generate_zed_config(colors, scss_path, output_path):
                 "font_weight": None,
             },
             "punctuation": {
-                "color": hex_with_alpha(inverse_on_surface, "ff"),
+                "color": hex_with_alpha(on_surface, "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
             "punctuation.bracket": {
-                "color": hex_with_alpha(darken(inverse_on_surface, 0.6), "ff"),
+                "color": hex_with_alpha(on_surface_variant, "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
             "punctuation.delimiter": {
-                "color": hex_with_alpha(darken(inverse_on_surface, 0.6), "ff"),
+                "color": hex_with_alpha(on_surface_variant, "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
@@ -2113,7 +2134,7 @@ def generate_zed_config(colors, scss_path, output_path):
                 "font_weight": None,
             },
             "string.escape": {
-                "color": hex_with_alpha(darken(inverse_on_surface, 0.55), "ff"),
+                "color": hex_with_alpha(on_surface_variant, "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
@@ -2153,7 +2174,7 @@ def generate_zed_config(colors, scss_path, output_path):
                 "font_weight": None,
             },
             "variable": {
-                "color": hex_with_alpha(inverse_on_surface, "ff"),
+                "color": hex_with_alpha(on_surface, "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
