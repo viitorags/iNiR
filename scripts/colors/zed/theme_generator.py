@@ -113,6 +113,56 @@ def generate_zed_config(colors, scss_path, output_path):
 
         return f"#{int(r * 255):02x}{int(g * 255):02x}{int(b * 255):02x}"
 
+    def saturate(hex_color, factor):
+        """Increase saturation of hex color (factor > 1 = more saturated)"""
+        hex_color = hex_color.lstrip("#")
+        r = int(hex_color[0:2], 16) / 255.0
+        g = int(hex_color[2:4], 16) / 255.0
+        b = int(hex_color[4:6], 16) / 255.0
+
+        max_c = max(r, g, b)
+        min_c = min(r, g, b)
+        l = (max_c + min_c) / 2.0
+
+        if max_c == min_c:
+            return f"#{int(r * 255):02x}{int(g * 255):02x}{int(b * 255):02x}"
+
+        d = max_c - min_c
+        s = d / (2.0 - max_c - min_c) if l > 0.5 else d / (max_c + min_c)
+        if max_c == r:
+            h = (g - b) / d + (6 if g < b else 0)
+        elif max_c == g:
+            h = (b - r) / d + 2
+        else:
+            h = (r - g) / d + 4
+        h /= 6.0
+
+        s = min(1.0, s * factor)
+
+        def hue_to_rgb(p, q, t):
+            if t < 0:
+                t += 1
+            if t > 1:
+                t -= 1
+            if t < 1 / 6:
+                return p + (q - p) * 6 * t
+            if t < 1 / 2:
+                return q
+            if t < 2 / 3:
+                return p + (q - p) * (2 / 3 - t) * 6
+            return p
+
+        if s == 0:
+            r = g = b = l
+        else:
+            q = l * (1 + s) if l < 0.5 else l + s - l * s
+            p = 2 * l - q
+            r = hue_to_rgb(p, q, h + 1 / 3)
+            g = hue_to_rgb(p, q, h)
+            b = hue_to_rgb(p, q, h - 1 / 3)
+
+        return f"#{int(r * 255):02x}{int(g * 255):02x}{int(b * 255):02x}"
+
     def _luminance(hex_color):
         hex_color = hex_color.lstrip("#")
         r = int(hex_color[0:2], 16)
@@ -706,55 +756,55 @@ def generate_zed_config(colors, scss_path, output_path):
             "terminal.bright_foreground": hex_with_alpha(on_surface, "ff"),
             "terminal.dim_foreground": hex_with_alpha(on_surface_variant, "ff"),
             "link_text.hover": hex_with_alpha(primary, "ff"),
-            "version_control.added": hex_with_alpha(darken(tertiary, 0.8), "ff"),
-            "version_control.modified": hex_with_alpha(darken(primary, 0.85), "ff"),
+            "version_control.added": hex_with_alpha(saturate(tertiary, 1.3), "ff"),
+            "version_control.modified": hex_with_alpha(saturate(primary, 1.3), "ff"),
             "version_control.word_added": hex_with_alpha(tertiary, "40"),
             "version_control.word_deleted": hex_with_alpha(error, "40"),
-            "version_control.deleted": hex_with_alpha(darken(error, 0.85), "ff"),
+            "version_control.deleted": hex_with_alpha(saturate(error, 1.3), "ff"),
             "version_control.conflict_marker.ours": hex_with_alpha(tertiary, "25"),
             "version_control.conflict_marker.theirs": hex_with_alpha(primary, "25"),
-            "conflict": hex_with_alpha(darken(tertiary, 0.8), "ff"),
+            "conflict": hex_with_alpha(saturate(tertiary, 1.3), "ff"),
             "conflict.background": hex_with_alpha(tertiary, "18"),
-            "conflict.border": hex_with_alpha(darken(tertiary, 0.7), "ff"),
-            "created": hex_with_alpha(darken(tertiary, 0.8), "ff"),
+            "conflict.border": hex_with_alpha(saturate(tertiary, 1.5), "ff"),
+            "created": hex_with_alpha(saturate(tertiary, 1.3), "ff"),
             "created.background": hex_with_alpha(tertiary, "18"),
-            "created.border": hex_with_alpha(darken(tertiary, 0.7), "ff"),
-            "deleted": hex_with_alpha(darken(error, 0.85), "ff"),
+            "created.border": hex_with_alpha(saturate(tertiary, 1.5), "ff"),
+            "deleted": hex_with_alpha(saturate(error, 1.3), "ff"),
             "deleted.background": hex_with_alpha(error, "18"),
-            "deleted.border": hex_with_alpha(darken(error, 0.7), "ff"),
-            "error": hex_with_alpha(darken(error, 0.85), "ff"),
+            "deleted.border": hex_with_alpha(saturate(error, 1.5), "ff"),
+            "error": hex_with_alpha(saturate(error, 1.3), "ff"),
             "error.background": hex_with_alpha(error, "18"),
-            "error.border": hex_with_alpha(darken(error, 0.7), "ff"),
+            "error.border": hex_with_alpha(saturate(error, 1.5), "ff"),
             "hidden": hex_with_alpha(on_surface_variant, "ff"),
             "hidden.background": hex_with_alpha(on_surface_variant, "18"),
             "hidden.border": hex_with_alpha(outline_variant, "ff"),
-            "hint": hex_with_alpha(darken(primary, 0.8), "ff"),
+            "hint": hex_with_alpha(saturate(primary, 1.3), "ff"),
             "hint.background": hex_with_alpha(primary, "18"),
-            "hint.border": hex_with_alpha(darken(primary, 0.7), "ff"),
+            "hint.border": hex_with_alpha(saturate(primary, 1.5), "ff"),
             "ignored": hex_with_alpha(on_surface_variant, "ff"),
             "ignored.background": hex_with_alpha(on_surface_variant, "18"),
             "ignored.border": hex_with_alpha(outline_variant, "ff"),
-            "info": hex_with_alpha(darken(primary, 0.85), "ff"),
+            "info": hex_with_alpha(saturate(primary, 1.3), "ff"),
             "info.background": hex_with_alpha(primary, "18"),
-            "info.border": hex_with_alpha(darken(primary, 0.7), "ff"),
-            "modified": hex_with_alpha(darken(primary, 0.85), "ff"),
+            "info.border": hex_with_alpha(saturate(primary, 1.5), "ff"),
+            "modified": hex_with_alpha(saturate(primary, 1.3), "ff"),
             "modified.background": hex_with_alpha(primary, "18"),
-            "modified.border": hex_with_alpha(darken(primary, 0.7), "ff"),
-            "predictive": hex_with_alpha(darken(secondary, 0.8), "ff"),
+            "modified.border": hex_with_alpha(saturate(primary, 1.5), "ff"),
+            "predictive": hex_with_alpha(saturate(secondary, 1.3), "ff"),
             "predictive.background": hex_with_alpha(secondary, "18"),
-            "predictive.border": hex_with_alpha(darken(secondary, 0.7), "ff"),
-            "renamed": hex_with_alpha(darken(primary, 0.85), "ff"),
+            "predictive.border": hex_with_alpha(saturate(secondary, 1.5), "ff"),
+            "renamed": hex_with_alpha(saturate(primary, 1.3), "ff"),
             "renamed.background": hex_with_alpha(primary, "18"),
-            "renamed.border": hex_with_alpha(darken(primary, 0.7), "ff"),
-            "success": hex_with_alpha(darken(tertiary, 0.8), "ff"),
+            "renamed.border": hex_with_alpha(saturate(primary, 1.5), "ff"),
+            "success": hex_with_alpha(saturate(tertiary, 1.3), "ff"),
             "success.background": hex_with_alpha(tertiary, "18"),
-            "success.border": hex_with_alpha(darken(tertiary, 0.7), "ff"),
+            "success.border": hex_with_alpha(saturate(tertiary, 1.5), "ff"),
             "unreachable": hex_with_alpha(on_surface_variant, "ff"),
             "unreachable.background": hex_with_alpha(on_surface_variant, "18"),
             "unreachable.border": hex_with_alpha(outline_variant, "ff"),
-            "warning": hex_with_alpha(darken(tertiary, 0.85), "ff"),
+            "warning": hex_with_alpha(saturate(tertiary, 1.3), "ff"),
             "warning.background": hex_with_alpha(tertiary, "18"),
-            "warning.border": hex_with_alpha(darken(tertiary, 0.7), "ff"),
+            "warning.border": hex_with_alpha(saturate(tertiary, 1.5), "ff"),
         }
 
         for i in range(16):
@@ -806,10 +856,10 @@ def generate_zed_config(colors, scss_path, output_path):
             light_theme[f"terminal.ansi.{name}"] = hex_with_alpha(color, "ff")
 
         player_colors = [
-            darken(primary, 0.8),
-            darken(error, 0.85),
-            darken(tertiary, 0.8),
-            darken(secondary, 0.8),
+            saturate(primary, 1.3),
+            saturate(error, 1.3),
+            saturate(tertiary, 1.3),
+            saturate(secondary, 1.3),
         ]
         light_theme["players"] = [
             {
@@ -822,12 +872,12 @@ def generate_zed_config(colors, scss_path, output_path):
 
         light_theme["syntax"] = {
             "attribute": {
-                "color": hex_with_alpha(primary, "ff"),
+                "color": hex_with_alpha(saturate(primary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
             "boolean": {
-                "color": hex_with_alpha(tertiary, "ff"),
+                "color": hex_with_alpha(saturate(tertiary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
@@ -842,12 +892,12 @@ def generate_zed_config(colors, scss_path, output_path):
                 "font_weight": None,
             },
             "constant": {
-                "color": hex_with_alpha(tertiary, "ff"),
+                "color": hex_with_alpha(saturate(tertiary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
             "constructor": {
-                "color": hex_with_alpha(primary, "ff"),
+                "color": hex_with_alpha(saturate(primary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
@@ -857,47 +907,47 @@ def generate_zed_config(colors, scss_path, output_path):
                 "font_weight": None,
             },
             "emphasis": {
-                "color": hex_with_alpha(primary, "ff"),
+                "color": hex_with_alpha(saturate(primary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
             "emphasis.strong": {
-                "color": hex_with_alpha(tertiary, "ff"),
+                "color": hex_with_alpha(saturate(tertiary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": 700,
             },
             "enum": {
-                "color": hex_with_alpha(secondary, "ff"),
+                "color": hex_with_alpha(saturate(secondary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
             "function": {
-                "color": hex_with_alpha(primary, "ff"),
+                "color": hex_with_alpha(saturate(primary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
             "hint": {
-                "color": hex_with_alpha(primary, "ff"),
+                "color": hex_with_alpha(saturate(primary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
             "keyword": {
-                "color": hex_with_alpha(secondary, "ff"),
+                "color": hex_with_alpha(saturate(secondary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
             "label": {
-                "color": hex_with_alpha(primary, "ff"),
+                "color": hex_with_alpha(saturate(primary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
             "link_text": {
-                "color": hex_with_alpha(primary, "ff"),
+                "color": hex_with_alpha(saturate(primary, 1.5), "ff"),
                 "font_style": "normal",
                 "font_weight": None,
             },
             "link_uri": {
-                "color": hex_with_alpha(secondary, "ff"),
+                "color": hex_with_alpha(saturate(secondary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
@@ -907,17 +957,17 @@ def generate_zed_config(colors, scss_path, output_path):
                 "font_weight": None,
             },
             "number": {
-                "color": hex_with_alpha(tertiary, "ff"),
+                "color": hex_with_alpha(saturate(tertiary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
             "operator": {
-                "color": hex_with_alpha(secondary, "ff"),
+                "color": hex_with_alpha(saturate(secondary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
             "predictive": {
-                "color": hex_with_alpha(secondary, "ff"),
+                "color": hex_with_alpha(saturate(secondary, 1.5), "ff"),
                 "font_style": "italic",
                 "font_weight": None,
             },
@@ -932,7 +982,7 @@ def generate_zed_config(colors, scss_path, output_path):
                 "font_weight": None,
             },
             "property": {
-                "color": hex_with_alpha(primary, "ff"),
+                "color": hex_with_alpha(saturate(primary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
@@ -952,32 +1002,32 @@ def generate_zed_config(colors, scss_path, output_path):
                 "font_weight": None,
             },
             "punctuation.list_marker": {
-                "color": hex_with_alpha(primary, "ff"),
+                "color": hex_with_alpha(saturate(primary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
             "punctuation.markup": {
-                "color": hex_with_alpha(primary, "ff"),
+                "color": hex_with_alpha(saturate(primary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
             "punctuation.special": {
-                "color": hex_with_alpha(error, "ff"),
+                "color": hex_with_alpha(saturate(error, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
             "selector": {
-                "color": hex_with_alpha(tertiary, "ff"),
+                "color": hex_with_alpha(saturate(tertiary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
             "selector.pseudo": {
-                "color": hex_with_alpha(primary, "ff"),
+                "color": hex_with_alpha(saturate(primary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
             "string": {
-                "color": hex_with_alpha(tertiary, "ff"),
+                "color": hex_with_alpha(saturate(tertiary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
@@ -987,37 +1037,37 @@ def generate_zed_config(colors, scss_path, output_path):
                 "font_weight": None,
             },
             "string.regex": {
-                "color": hex_with_alpha(tertiary, "ff"),
+                "color": hex_with_alpha(saturate(tertiary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
             "string.special": {
-                "color": hex_with_alpha(tertiary, "ff"),
+                "color": hex_with_alpha(saturate(tertiary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
             "string.special.symbol": {
-                "color": hex_with_alpha(tertiary, "ff"),
+                "color": hex_with_alpha(saturate(tertiary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
             "tag": {
-                "color": hex_with_alpha(primary, "ff"),
+                "color": hex_with_alpha(saturate(primary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
             "text.literal": {
-                "color": hex_with_alpha(tertiary, "ff"),
+                "color": hex_with_alpha(saturate(tertiary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
             "title": {
-                "color": hex_with_alpha(primary, "ff"),
+                "color": hex_with_alpha(saturate(primary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": 400,
             },
             "type": {
-                "color": hex_with_alpha(secondary, "ff"),
+                "color": hex_with_alpha(saturate(secondary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
@@ -1027,12 +1077,12 @@ def generate_zed_config(colors, scss_path, output_path):
                 "font_weight": None,
             },
             "variable.special": {
-                "color": hex_with_alpha(tertiary, "ff"),
+                "color": hex_with_alpha(saturate(tertiary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
             "variant": {
-                "color": hex_with_alpha(primary, "ff"),
+                "color": hex_with_alpha(saturate(primary, 1.5), "ff"),
                 "font_style": None,
                 "font_weight": None,
             },
