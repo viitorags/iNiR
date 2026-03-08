@@ -33,6 +33,9 @@ Singleton {
     property bool superDown: false
     property bool superReleaseMightTrigger: true
     property bool wallpaperSelectorOpen: false
+    // Dialog requests from other panels (e.g. left sidebar → right sidebar)
+    property bool requestWifiDialog: false
+    property bool requestBluetoothDialog: false
     // Selection targets: "main", "backdrop", "waffle", "waffle-backdrop"
     property string wallpaperSelectionTarget: "main"
     // Target monitor for wallpaper selector (set before opening, avoids config timing issues)
@@ -83,6 +86,8 @@ Singleton {
     // Panel family transition animation state
     property bool familyTransitionActive: false
     property string familyTransitionDirection: "left" // "left" = current exits left, new enters from right
+
+    signal requestRipple(real x, real y, string screenName)
 
     // Primary screen: user-configured preferred monitor for single-window panels (OSD, notifications, wallpaper selector, etc.)
     // Empty string = use compositor-focused screen, falling back to Quickshell.screens[0]

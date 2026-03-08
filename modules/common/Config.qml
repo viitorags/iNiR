@@ -498,6 +498,19 @@ Singleton {
                     property int videoBlurStrength: 50
                     property int dim: 0 // 0-100 percentage (base overlay)
                     property int dynamicDim: 0 // Extra dim when there are windows on the current workspace (0-100)
+                    property JsonObject ripple: JsonObject {
+                        property bool enable: false
+                        property bool charging: true
+                        property bool overview: true
+                        property bool reload: true
+                        property bool lock: true
+                        property bool session: true
+                        property bool hotcorners: true
+                        property int rippleDuration: 3000
+                        property real sparkleIntensity: 1.0 // 0.0 = no sparkles, 2.0 = intense
+                        property real glowIntensity: 1.0    // 0.0 = no glow, 2.0 = strong
+                        property real ringWidth: 0.15       // 0.05 = thin ring, 0.5 = wide ring
+                    }
                 }
                 property JsonObject backdrop: JsonObject {
                     property bool enable: true
@@ -570,6 +583,8 @@ Singleton {
                 property string topLeftIcon: "spark" // Options: "distro" or any icon name in ~/.config/quickshell/ii/assets/icons
                 property bool showBackground: true
                 property bool showScrollHints: true // Show brightness/volume scroll hints on hover
+                property string leftScrollAction: "brightness" // "brightness", "volume", "workspace", "none"
+                property string rightScrollAction: "volume" // "brightness", "volume", "workspace", "none"
                 property JsonObject blurBackground: JsonObject {
                     property bool enabled: false
                     property real overlayOpacity: 0.3
@@ -654,6 +669,7 @@ Singleton {
                 }
                 property JsonObject workspaces: JsonObject {
                     property string scrollBehavior: "workspace" // "workspace" or "column"
+                    property bool invertScroll: false // Invert scroll direction
                     property bool monochromeIcons: true
                     property bool dynamicCount: true // Auto-detect workspace count (Niri)
                     property int shown: 10 // Only used when dynamicCount is false
