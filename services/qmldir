@@ -1,4 +1,5 @@
 module qs.services
+singleton AwwwBackend 1.0 AwwwBackend.qml
 singleton Ai 1.0 Ai.qml
 singleton AnimeService 1.0 AnimeService.qml
 singleton AppSearch 1.0 AppSearch.qml
