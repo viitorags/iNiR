@@ -914,6 +914,111 @@ ContentPage {
     }
 
     SettingsCardSection {
+        expanded: false
+        icon: "wallpaper"
+        title: Translation.tr("Wallpaper backend")
+
+        SettingsGroup {
+            StyledText {
+                Layout.fillWidth: true
+                text: Translation.tr("Use the built-in renderer for the full iNiR effects stack, or hand the visible static wallpaper to awww while keeping selectors, config, per-monitor logic, theming, and backdrops synchronized.")
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.small
+                wrapMode: Text.WordWrap
+                opacity: 0.85
+            }
+
+            ConfigSelectionArray {
+                currentValue: Config.options?.background?.backend?.provider ?? "internal"
+                onSelected: newValue => {
+                    Config.setNestedValue("background.backend.provider", newValue)
+                }
+                options: [
+                    { displayName: Translation.tr("Internal"), icon: "wallpaper", value: "internal" },
+                    { displayName: Translation.tr("awww"), icon: "cloud_sync", value: "awww" }
+                ]
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                text: {
+                    if ((Config.options?.background?.backend?.provider ?? "internal") !== "awww")
+                        return Translation.tr("Built-in QML renderer active.")
+                    if (AwwwBackend.available)
+                        return Translation.tr("awww detected. Static wallpapers are synced per monitor from your current config.")
+                    return Translation.tr("awww selected, but the `awww` / `awww-daemon` binaries were not found in PATH. iNiR will keep using the internal renderer until they are installed.")
+                }
+                color: (Config.options?.background?.backend?.provider ?? "internal") === "awww" && !AwwwBackend.available
+                    ? Appearance.colors.colError
+                    : Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.small
+                wrapMode: Text.WordWrap
+                opacity: 0.9
+            }
+
+            StyledText {
+                visible: (Config.options?.background?.backend?.provider ?? "internal") === "awww"
+                Layout.fillWidth: true
+                text: Translation.tr("During the awww test period, iNiR still keeps internal fallback rendering for GIF/video wallpapers, lock blur, blur overlays, overview/backdrop paths, and any case where the external renderer cannot match the current wallpaper mode.")
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                wrapMode: Text.WordWrap
+                opacity: 0.8
+            }
+
+            StyledText {
+                visible: (Config.options?.background?.backend?.provider ?? "internal") === "awww"
+                Layout.fillWidth: true
+                text: ((Config.options?.background?.fillMode ?? "fill") === "tile" || (Config.options?.background?.parallax?.enableWorkspace ?? false) || (Config.options?.background?.parallax?.enableSidebar ?? false))
+                    ? Translation.tr("Current wallpaper mode needs internal fallback for visual parity: tile scaling and dynamic parallax cannot be rendered by awww, so iNiR will keep the internal renderer visible for those cases while still syncing the static image to awww.")
+                    : Translation.tr("Current wallpaper mode is compatible with awww-visible rendering for static images.")
+                color: ((Config.options?.background?.fillMode ?? "fill") === "tile" || (Config.options?.background?.parallax?.enableWorkspace ?? false) || (Config.options?.background?.parallax?.enableSidebar ?? false))
+                    ? Appearance.colors.colError
+                    : Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                wrapMode: Text.WordWrap
+                opacity: 0.82
+            }
+
+            ConfigSpinBox {
+                visible: (Config.options?.background?.backend?.provider ?? "internal") === "awww"
+                icon: "speed"
+                text: Translation.tr("awww transition FPS")
+                value: Config.options?.background?.backend?.awww?.transitionFps ?? 60
+                from: 10
+                to: 240
+                stepSize: 5
+                onValueChanged: Config.setNestedValue("background.backend.awww.transitionFps", value)
+            }
+
+            ConfigRow {
+                visible: (Config.options?.background?.backend?.provider ?? "internal") === "awww"
+                uniform: true
+
+                ConfigSpinBox {
+                    icon: "blur_on"
+                    text: Translation.tr("Simple step")
+                    value: Config.options?.background?.backend?.awww?.simpleStep ?? 5
+                    from: 1
+                    to: 64
+                    stepSize: 1
+                    onValueChanged: Config.setNestedValue("background.backend.awww.simpleStep", value)
+                }
+
+                ConfigSpinBox {
+                    icon: "swipe"
+                    text: Translation.tr("Spatial step")
+                    value: Config.options?.background?.backend?.awww?.spatialStep ?? 30
+                    from: 1
+                    to: 128
+                    stepSize: 1
+                    onValueChanged: Config.setNestedValue("background.backend.awww.spatialStep", value)
+                }
+            }
+        }
+    }
+
+    SettingsCardSection {
         visible: root.isIiActive
         expanded: false
         icon: "transition_fade"
@@ -942,11 +1047,14 @@ ContentPage {
                     text: {
                         const t = Config.options?.background?.transition?.type ?? "crossfade"
                         switch (t) {
-                        case "crossfade": return Translation.tr("Smoothly blends from the old wallpaper into the new one")
-                        case "slide":     return Translation.tr("The new wallpaper slides in from the side")
-                        case "zoom":      return Translation.tr("Subtle zoom effect as the new wallpaper fades in")
-                        case "blurFade":  return Translation.tr("The old wallpaper blurs away while the new one appears")
-                        default:          return ""
+                        case "crossfade":    return Translation.tr("A clean dissolve tuned for everyday wallpaper changes")
+                        case "fadeThrough":  return Translation.tr("A staged handoff: outgoing fades away, a short breath, then the new wallpaper settles in")
+                        case "wipe":         return Translation.tr("A directional reveal inspired by modern shader-based shells, with subtle depth and motion")
+                        case "slide":        return Translation.tr("The new wallpaper glides across the old one with a restrained spatial drift")
+                        case "push":         return Translation.tr("A full spatial handoff where the next wallpaper physically pushes the previous one away")
+                        case "zoom":         return Translation.tr("A cinematic lens change: the old wallpaper recedes while the new one focuses into place")
+                        case "blurFade":     return Translation.tr("The previous wallpaper softens into blur while the next one appears sharp and stable")
+                        default:             return ""
                         }
                     }
                     font.pixelSize: Appearance.font.pixelSize.smaller
@@ -961,10 +1069,107 @@ ContentPage {
                         Config.setNestedValue("background.transition.type", newValue);
                     }
                     options: [
-                        { displayName: Translation.tr("Crossfade"), icon: "transition_fade", value: "crossfade" },
+                        { displayName: Translation.tr("Dissolve"), icon: "transition_fade", value: "crossfade" },
+                        { displayName: Translation.tr("Fade through"), icon: "motion_photos_on", value: "fadeThrough" },
+                        { displayName: Translation.tr("Reveal"), icon: "left_panel_open", value: "wipe" },
                         { displayName: Translation.tr("Slide"), icon: "swipe_right_alt", value: "slide" },
+                        { displayName: Translation.tr("Push"), icon: "compare_arrows", value: "push" },
                         { displayName: Translation.tr("Zoom"), icon: "zoom_in", value: "zoom" },
                         { displayName: Translation.tr("Blur fade"), icon: "blur_on", value: "blurFade" }
+                    ]
+                }
+            }
+
+            ContentSubsection {
+                visible: (Config.options?.background?.transition?.enable ?? true)
+                         && (["wipe", "slide", "push"].indexOf(Config.options?.background?.transition?.type ?? "crossfade") >= 0)
+                title: Translation.tr("Transition direction")
+
+                StyledText {
+                    Layout.fillWidth: true
+                    Layout.bottomMargin: 2
+                    text: Translation.tr("Choose where the movement or reveal comes from. Vertical directions work well for tall wallpapers and horizontal directions feel more cinematic on wide monitors.")
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    color: Appearance.colors.colSubtext
+                    opacity: 0.8
+                    wrapMode: Text.WordWrap
+                }
+
+                ConfigSelectionArray {
+                    currentValue: Config.options?.background?.transition?.direction ?? "right"
+                    onSelected: newValue => {
+                        Config.setNestedValue("background.transition.direction", newValue);
+                    }
+                    options: [
+                        { displayName: Translation.tr("From left"), icon: "west", value: "left" },
+                        { displayName: Translation.tr("From right"), icon: "east", value: "right" },
+                        { displayName: Translation.tr("From top"), icon: "north", value: "top" },
+                        { displayName: Translation.tr("From bottom"), icon: "south", value: "bottom" }
+                    ]
+                }
+            }
+
+            ContentSubsection {
+                visible: Config.options?.background?.transition?.enable ?? true
+                title: Translation.tr("Transition curve")
+
+                StyledText {
+                    Layout.fillWidth: true
+                    Layout.bottomMargin: 2
+                    text: {
+                        const raw = Config.options?.background?.transition?.bezier ?? [0.54, 0.0, 0.34, 0.99]
+                        if (!raw || raw.length !== 4)
+                            return Translation.tr("Refined standard motion curve")
+                        const values = raw.map(value => Number(value).toFixed(2)).join(", ")
+                        return Translation.tr("Active bezier: %1").arg(values)
+                    }
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    color: Appearance.colors.colSubtext
+                    opacity: 0.8
+                    wrapMode: Text.WordWrap
+                }
+
+                ConfigSelectionArray {
+                    currentValue: {
+                        const raw = Config.options?.background?.transition?.bezier ?? [0.54, 0.0, 0.34, 0.99]
+                        if (!raw || raw.length !== 4)
+                            return "refined"
+
+                        const normalized = raw.map(value => Number(value).toFixed(2)).join(",")
+                        switch (normalized) {
+                        case "0.54,0.00,0.34,0.99": return "refined"
+                        case "0.20,0.00,0.00,1.00": return "settle"
+                        case "0.05,0.70,0.10,1.00": return "gentle"
+                        case "0.30,0.00,0.80,0.15": return "assertive"
+                        case "0.42,0.00,0.58,1.00": return "balanced"
+                        default: return "refined"
+                        }
+                    }
+                    onSelected: newValue => {
+                        switch (newValue) {
+                        case "settle":
+                            Config.setNestedValue("background.transition.bezier", [0.2, 0.0, 0.0, 1.0]);
+                            break;
+                        case "gentle":
+                            Config.setNestedValue("background.transition.bezier", [0.05, 0.7, 0.1, 1.0]);
+                            break;
+                        case "assertive":
+                            Config.setNestedValue("background.transition.bezier", [0.3, 0.0, 0.8, 0.15]);
+                            break;
+                        case "balanced":
+                            Config.setNestedValue("background.transition.bezier", [0.42, 0.0, 0.58, 1.0]);
+                            break;
+                        default:
+                            Config.setNestedValue("background.transition.bezier", [0.54, 0.0, 0.34, 0.99]);
+                            break;
+                        }
+                    }
+                    options: [
+                        { displayName: Translation.tr("Refined"), icon: "auto_awesome", value: "refined" },
+                        { displayName: Translation.tr("Settle"), icon: "speed", value: "settle" },
+                        { displayName: Translation.tr("Gentle"), icon: "south_east", value: "gentle" },
+                        { displayName: Translation.tr("Assertive"), icon: "north_east", value: "assertive" },
+                        { displayName: Translation.tr("Balanced"), icon: "timeline", value: "balanced" }
                     ]
                 }
             }

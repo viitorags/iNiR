@@ -103,7 +103,11 @@ Singleton {
         root._log("[ThemeService] regenerateAutoTheme called");
         if (isAutoTheme) {
             // Force full regeneration from wallpaper (includes terminals, GTK, etc)
-            Quickshell.execDetached([Directories.wallpaperSwitchScriptPath, "--noswitch"]);
+            const themingPath = Wallpapers.currentThemingWallpaperPath()
+            const command = [Directories.wallpaperSwitchScriptPath, "--noswitch"]
+            if (themingPath && themingPath.length > 0)
+                command.push("--image", themingPath)
+            Quickshell.execDetached(command);
         } else {
             // For manual presets, just re-apply with external apps
             ThemePresets.applyPreset(currentTheme, true);

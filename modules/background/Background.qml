@@ -100,6 +100,8 @@ Variants {
             return enabled && sensitiveWallpaper && sensitiveNetwork;
         }
         readonly property string fillMode: bgRoot.backgroundOptions.fillMode ?? "fill"
+        readonly property bool dynamicParallaxRequested: (bgRoot.parallaxOptions.enableWorkspace ?? false) || (bgRoot.parallaxOptions.enableSidebar ?? false)
+        readonly property bool externalMainWallpaperActive: !wallpaperSafetyTriggered && AwwwBackend.supportsVisibleMainWallpaper(bgRoot.wallpaperPathRaw, bgRoot.fillMode, bgRoot.dynamicParallaxRequested, (bgRoot.effectsOptions.enableAnimatedBlur ?? false) || blurLoader.active)
         property real wallpaperToScreenRatio: Math.min(wallpaperWidth / screen.width, wallpaperHeight / screen.height)
         property real preferredWallpaperScale: bgRoot.parallaxOptions.workspaceZoom ?? 1
         property real effectiveWallpaperScale: 1
@@ -268,8 +270,13 @@ Variants {
                 property real effectiveValueY: Math.max(0, Math.min(1, valueY))
                 
                 readonly property bool useParallax: bgRoot.fillMode === "fill" && !bgRoot.wallpaperIsGif && !bgRoot.wallpaperIsVideo
-                x: useParallax ? (-(bgRoot.movableXSpace) - (effectiveValueX - 0.5) * 2 * bgRoot.movableXSpace) : 0
-                y: useParallax ? (-(bgRoot.movableYSpace) - (effectiveValueY - 0.5) * 2 * bgRoot.movableYSpace) : 0
+                readonly property bool showInternalStaticWallpaper: !bgRoot.externalMainWallpaperActive || blurAlwaysLoader.active || blurLoader.active
+                readonly property real targetX: useParallax ? (-(bgRoot.movableXSpace) - (effectiveValueX - 0.5) * 2 * bgRoot.movableXSpace) : 0
+                readonly property real targetY: useParallax ? (-(bgRoot.movableYSpace) - (effectiveValueY - 0.5) * 2 * bgRoot.movableYSpace) : 0
+                readonly property real targetWidth: useParallax ? (bgRoot.wallpaperWidth / bgRoot.wallpaperToScreenRatio * bgRoot.effectiveWallpaperScale) : bgRoot.screen.width
+                readonly property real targetHeight: useParallax ? (bgRoot.wallpaperHeight / bgRoot.wallpaperToScreenRatio * bgRoot.effectiveWallpaperScale) : bgRoot.screen.height
+                x: targetX
+                y: targetY
                 Behavior on x {
                     enabled: Appearance.animationsEnabled && wallpaperContainer.useParallax
                     animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
@@ -278,24 +285,46 @@ Variants {
                     enabled: Appearance.animationsEnabled && wallpaperContainer.useParallax
                     animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
                 }
-                width: useParallax ? (bgRoot.wallpaperWidth / bgRoot.wallpaperToScreenRatio * bgRoot.effectiveWallpaperScale) : bgRoot.screen.width
-                height: useParallax ? (bgRoot.wallpaperHeight / bgRoot.wallpaperToScreenRatio * bgRoot.effectiveWallpaperScale) : bgRoot.screen.height
+                width: targetWidth
+                height: targetHeight
                 // Animate container resize so it blends with the crossfader transition
-                readonly property int _transitionDur: Config.options?.background?.transition?.duration ?? 800
+                readonly property int _transitionBaseDuration: Config.options?.background?.transition?.duration ?? 800
+                readonly property int _transitionDur: Appearance.calcEffectiveDuration(_transitionBaseDuration)
+                readonly property var _transitionBezierRaw: Config.options?.background?.transition?.bezier ?? [0.54, 0.0, 0.34, 0.99]
+                readonly property list<real> _transitionBezierCurve: {
+                    const raw = _transitionBezierRaw
+                    if (!raw || raw.length !== 4)
+                        return [0.54, 0.0, 0.34, 0.99, 1, 1]
+                    const x1 = Number(raw[0])
+                    const y1 = Number(raw[1])
+                    const x2 = Number(raw[2])
+                    const y2 = Number(raw[3])
+                    if (!Number.isFinite(x1) || !Number.isFinite(y1) || !Number.isFinite(x2) || !Number.isFinite(y2))
+                        return [0.54, 0.0, 0.34, 0.99, 1, 1]
+                    return [x1, y1, x2, y2, 1, 1]
+                }
                 Behavior on width {
                     enabled: Appearance.animationsEnabled && wallpaperContainer.useParallax
-                    NumberAnimation { duration: wallpaperContainer._transitionDur; easing.type: Easing.InOutCubic }
+                    NumberAnimation {
+                        duration: wallpaperContainer._transitionDur
+                        easing.type: Easing.BezierSpline
+                        easing.bezierCurve: wallpaperContainer._transitionBezierCurve
+                    }
                 }
                 Behavior on height {
                     enabled: Appearance.animationsEnabled && wallpaperContainer.useParallax
-                    NumberAnimation { duration: wallpaperContainer._transitionDur; easing.type: Easing.InOutCubic }
+                    NumberAnimation {
+                        duration: wallpaperContainer._transitionDur
+                        easing.type: Easing.BezierSpline
+                        easing.bezierCurve: wallpaperContainer._transitionBezierCurve
+                    }
                 }
 
                 // Static wallpaper with crossfade transitions (non-GIF, non-video images only)
                 WallpaperCrossfader {
                     id: wallpaper
                     anchors.fill: parent
-                    visible: !blurLoader.active && !bgRoot.backdropActive && !bgRoot.wallpaperIsGif && !bgRoot.wallpaperIsVideo
+                    visible: wallpaperContainer.showInternalStaticWallpaper && !blurLoader.active && !bgRoot.backdropActive && !bgRoot.wallpaperIsGif && !bgRoot.wallpaperIsVideo
                     source: (bgRoot.wallpaperSafetyTriggered || bgRoot.wallpaperIsVideo || bgRoot.wallpaperIsGif) ? "" : bgRoot.wallpaperPath
                     fillMode: bgRoot.fillMode === "fit" ? Image.PreserveAspectFit
                             : bgRoot.fillMode === "tile" ? Image.Tile
@@ -312,7 +341,7 @@ Variants {
                 AnimatedImage {
                     id: gifWallpaper
                     anchors.fill: parent
-                    visible: opacity > 0 && !blurLoader.active && !bgRoot.backdropActive && bgRoot.wallpaperIsGif
+                    visible: opacity > 0 && !blurLoader.active && !bgRoot.backdropActive && bgRoot.wallpaperIsGif && !bgRoot.externalMainWallpaperActive
                     opacity: (status === AnimatedImage.Ready && bgRoot.wallpaperIsGif) ? 1 : 0
                     Behavior on opacity {
                         enabled: Appearance.animationsEnabled
