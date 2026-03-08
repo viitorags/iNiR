@@ -52,6 +52,7 @@ check_dependencies() {
         "wl-copy:wl-clipboard"
         "wl-paste:wl-clipboard"
         "fuzzel:fuzzel"
+        "awww:awww"
         "hyprpicker:hyprpicker"
         "songrec:SongRec"
         "trans:translate-shell"

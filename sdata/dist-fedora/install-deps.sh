@@ -442,6 +442,20 @@ if ! command -v xwayland-satellite &>/dev/null; then
   fi
 fi
 
+# awww - wallpaper daemon (Wayland) — compile from source
+if ! command -v awww &>/dev/null; then
+  log_info "Installing awww (wallpaper daemon)..."
+  if command -v cargo &>/dev/null; then
+    if cargo install --git https://codeberg.org/LGFae/awww.git 2>/dev/null; then
+      log_success "awww installed via Cargo"
+    else
+      log_warning "awww build failed — install manually: cargo install --git https://codeberg.org/LGFae/awww.git"
+    fi
+  else
+    log_warning "awww requires Rust — install Rust first, then: cargo install --git https://codeberg.org/LGFae/awww.git"
+  fi
+fi
+
 # darkly - Qt theme (download .rpm from GitHub)
 if ${INSTALL_FONTS:-true}; then
   if ! rpm -q darkly &>/dev/null; then
