@@ -65,8 +65,6 @@ spicetify_root="$(dirname "$spicetify_config")"
 theme_dir="$spicetify_root/Themes/$THEME_NAME"
 color_file="$theme_dir/color.ini"
 user_css_file="$theme_dir/user.css"
-config_file="$spicetify_root/config-xpui.ini"
-watch_pid_file="$STATE_DIR/user/generated/spicetify_watch.pid"
 
 if ! mkdir -p "$theme_dir" 2>/dev/null; then
   log "Cannot create theme directory: $theme_dir"
@@ -109,24 +107,23 @@ spicetify config current_theme "$THEME_NAME" color_scheme "$SCHEME_NAME" >> "$LO
 spotify_running=$(pgrep -x spotify 2>/dev/null)
 watch_running=false
 
-if [[ -f "$watch_pid_file" ]]; then
-  watch_pid=$(cat "$watch_pid_file" 2>/dev/null)
-  if [[ -n "$watch_pid" ]] && kill -0 "$watch_pid" 2>/dev/null; then
-    watch_running=true
-  fi
-fi
-
-if ! $watch_running && pgrep -f "spicetify watch" >/dev/null 2>&1; then
+if pgrep -f "spicetify watch" >/dev/null 2>&1; then
   watch_running=true
 fi
 
-if [[ -n "$spotify_running" ]] || $watch_running; then
-  log "Spotify/watcher already running - color.ini updated, live reload will handle it."
-  log "Updated colors: primary=$(strip_hash "$primary"), surface=$(strip_hash "$surface")"
+if [[ -n "$spotify_running" ]] && $watch_running; then
+  log "Spotify and watch running - colors updated, watch will reload automatically."
+  log "Updated: primary=$(strip_hash "$primary"), surface=$(strip_hash "$surface")"
   exit 0
 fi
 
-log "Initial setup - running spicetify apply and starting watch mode."
+if [[ -n "$spotify_running" ]]; then
+  log "Spotify running but no watch detected - triggering live reload."
+  spicetify apply >> "$LOG_FILE" 2>&1 || true
+  exit 0
+fi
+
+log "Spotify not running - running initial apply."
 
 apply_out=""
 if ! apply_out=$(spicetify apply 2>&1); then
@@ -147,8 +144,4 @@ else
   printf "%s\n" "$apply_out" >> "$LOG_FILE" 2>&1
 fi
 
-log "Applied theme '$THEME_NAME' (scheme '$SCHEME_NAME'). Starting watch mode."
-
-exec spicetify watch -s 2>&1 | sed "/Reloaded Spotify/q" &
-watch_pid=$!
-echo "$watch_pid" > "$watch_pid_file"
+log "Applied theme '$THEME_NAME' (scheme '$SCHEME_NAME')."
