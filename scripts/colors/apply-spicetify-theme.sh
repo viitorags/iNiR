@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 #
 # apply-spicetify-theme.sh - Generate and apply a Spicetify color scheme
-# from iNiR Material colors.
+# from iNiR Material colors using the Sleek theme with live updates.
 #
 # Reads:  ~/.local/state/quickshell/user/generated/colors.json
-# Writes: ~/.config/spicetify/Themes/ii-material/color.ini
-#
+# Writes: ~/.config/spicetify/Themes/Sleek/color.ini
 
 XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
@@ -13,8 +12,8 @@ STATE_DIR="$XDG_STATE_HOME/quickshell"
 COLORS_JSON="$STATE_DIR/user/generated/colors.json"
 LOG_FILE="$STATE_DIR/user/generated/spicetify_theme.log"
 
-THEME_NAME="ii-material"
-SCHEME_NAME="iNiR"
+THEME_NAME="Sleek"
+SCHEME_NAME="matugen"
 
 mkdir -p "$STATE_DIR/user/generated" 2>/dev/null || true
 if ! touch "$LOG_FILE" 2>/dev/null; then
@@ -72,6 +71,11 @@ if ! mkdir -p "$theme_dir" 2>/dev/null; then
   exit 1
 fi
 
+if ! curl -L --create-dirs -o "$user_css_file" \
+  "https://raw.githubusercontent.com/spicetify/spicetify-themes/master/Sleek/user.css" 2>>"$LOG_FILE"; then
+  log "Failed to download Sleek user.css. Continuing with existing file if present."
+fi
+
 if ! cat > "$color_file" <<EOF
 [${SCHEME_NAME}]
 text               = $(strip_hash "$on_surface")
@@ -92,17 +96,6 @@ misc               = $(strip_hash "$outline_variant")
 EOF
 then
   log "Cannot write color scheme file: $color_file"
-  exit 1
-fi
-
-if ! cat > "$user_css_file" <<'EOF'
-/* iNiR Spicetify theme scaffold */
-:root {
-  --system_is_dark_theme: 1;
-}
-EOF
-then
-  log "Cannot write user.css file: $user_css_file"
   exit 1
 fi
 
@@ -137,12 +130,11 @@ fi
 
 log "Applied theme '$THEME_NAME' (scheme '$SCHEME_NAME')."
 
-# Ensure visible live update when Spotify is currently running.
-# Some environments don't reflect refreshed styles until process restart.
+pkill -f "spicetify watch" 2>/dev/null || true
+
 if pgrep -x spotify >/dev/null 2>&1; then
-  if spicetify restart >> "$LOG_FILE" 2>&1; then
-    log "Restarted Spotify to apply updated colors live."
-  else
-    log "Spotify restart command failed; theme will apply on next launch."
-  fi
+  log "Spotify is running - using spicetify watch for live updates."
+  exec spicetify watch -s 2>&1 | sed "/Reloaded Spotify/q"
+else
+  log "Spotify not running - start with: spicetify watch -s"
 fi
