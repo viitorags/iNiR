@@ -65,6 +65,7 @@ fi
 spicetify_root="$(dirname "$spicetify_config")"
 theme_dir="$spicetify_root/Themes/$THEME_NAME"
 color_file="$theme_dir/color.ini"
+user_css_file="$theme_dir/user.css"
 
 if ! mkdir -p "$theme_dir" 2>/dev/null; then
   log "Cannot create theme directory: $theme_dir"
@@ -94,14 +95,44 @@ then
   exit 1
 fi
 
+if ! cat > "$user_css_file" <<'EOF'
+/* iNiR Spicetify theme scaffold */
+:root {
+  --system_is_dark_theme: 1;
+}
+EOF
+then
+  log "Cannot write user.css file: $user_css_file"
+  exit 1
+fi
+
+if ! spicetify config inject_css 1 replace_colors 1 >> "$LOG_FILE" 2>&1; then
+  log "Failed to enable inject_css/replace_colors."
+  exit 1
+fi
+
 if ! spicetify config current_theme "$THEME_NAME" color_scheme "$SCHEME_NAME" >> "$LOG_FILE" 2>&1; then
   log "Failed to update Spicetify config."
   exit 1
 fi
 
-if spicetify apply >> "$LOG_FILE" 2>&1; then
-  log "Applied theme '$THEME_NAME' (scheme '$SCHEME_NAME')."
+apply_out=""
+if ! apply_out=$(spicetify apply 2>&1); then
+  printf "%s\n" "$apply_out" >> "$LOG_FILE" 2>&1
+  if printf "%s" "$apply_out" | grep -Eqi "backup|cannot find backup|run.*backup"; then
+    log "Detected missing/invalid backup. Running 'spicetify backup apply'."
+    if ! backup_out=$(spicetify backup apply 2>&1); then
+      printf "%s\n" "$backup_out" >> "$LOG_FILE" 2>&1
+      log "spicetify backup apply failed."
+      exit 1
+    fi
+    printf "%s\n" "$backup_out" >> "$LOG_FILE" 2>&1
+  else
+    log "spicetify apply failed."
+    exit 1
+  fi
 else
-  log "spicetify apply failed. Check Spicetify setup and backups."
-  exit 1
+  printf "%s\n" "$apply_out" >> "$LOG_FILE" 2>&1
 fi
+
+log "Applied theme '$THEME_NAME' (scheme '$SCHEME_NAME')."
