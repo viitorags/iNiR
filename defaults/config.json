@@ -233,7 +233,7 @@
             "folder": ""
         },
         "backend": {
-            "provider": "internal",
+            "provider": "awww",
             "awww": {
                 "transitionFps": 60,
                 "simpleStep": 5,
@@ -669,6 +669,7 @@
             "visualize": true
         },
         "keepRightSidebarLoaded": true,
+        "instantOpen": false,
         "layout": "default",
         "quickSliders": {
             "enable": true,
@@ -990,6 +991,12 @@
         "background": {
             "wallpaperPath": "",
             "useMainWallpaper": true,
+            "transition": {
+                "enable": true,
+                "type": "crossfade",
+                "direction": "right",
+                "duration": 800
+            },
             "effects": {
                 "enableBlur": false,
                 "blurRadius": 32,

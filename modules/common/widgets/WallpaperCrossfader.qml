@@ -37,8 +37,8 @@ Item {
 
     // ── Internal state ─────────────────────────────────────────────────
     property bool _transitioning: false
-    readonly property bool _canTransition: enableTransitions && Appearance.animationsEnabled
-    readonly property string _effectiveType: _canTransition ? transitionType : "none"
+    readonly property bool _canTransition: enableTransitions && Appearance.animationsEnabled && _normalizedTransitionType(transitionType) !== "none"
+    readonly property string _effectiveType: _canTransition ? _normalizedTransitionType(transitionType) : "none"
     readonly property real _zoomEnterFrom: 1.12
     readonly property real _zoomExitTo: 0.9
     readonly property real _wipeIncomingParallax: 0.08
@@ -105,16 +105,50 @@ Item {
         return Math.max(0, Math.min(1, value))
     }
 
+    function _normalizedTransitionType(rawType: string): string {
+        switch (String(rawType ?? "crossfade")) {
+        case "none":
+            return "none"
+        case "simple":
+        case "fade":
+            return "crossfade"
+        case "left":
+        case "right":
+        case "top":
+        case "bottom":
+            return "slide"
+        case "wave":
+        case "wipe":
+            return "wipe"
+        case "grow":
+        case "center":
+        case "outer":
+        case "any":
+        case "random":
+            return "zoom"
+        default:
+            return String(rawType ?? "crossfade")
+        }
+    }
+
+    function _resolvedTransitionDirection(): string {
+        if (["left", "right", "top", "bottom"].includes(transitionType))
+            return transitionType
+        return transitionDirection
+    }
+
     function _lerp(from: real, to: real, progress: real): real {
         return from + ((to - from) * progress)
     }
 
     function _isVerticalDirection(): bool {
-        return transitionDirection === "top" || transitionDirection === "bottom"
+        const direction = _resolvedTransitionDirection()
+        return direction === "top" || direction === "bottom"
     }
 
     function _directionSign(): real {
-        return transitionDirection === "right" || transitionDirection === "bottom" ? 1 : -1
+        const direction = _resolvedTransitionDirection()
+        return direction === "right" || direction === "bottom" ? 1 : -1
     }
 
     function _travelDistance(): real {
@@ -509,7 +543,7 @@ Item {
 
         const progress = _clamp01(transitionState.progress)
         const width = _transitionWidth() * progress
-        return transitionDirection === "right" ? _transitionWidth() - width : 0
+        return _resolvedTransitionDirection() === "right" ? _transitionWidth() - width : 0
     }
 
     function _slotWrapperY(slotIndex: int): real {
@@ -518,7 +552,7 @@ Item {
 
         const progress = _clamp01(transitionState.progress)
         const height = _transitionHeight() * progress
-        return transitionDirection === "bottom" ? _transitionHeight() - height : 0
+        return _resolvedTransitionDirection() === "bottom" ? _transitionHeight() - height : 0
     }
 
     function _slotWrapperWidth(slotIndex: int): real {

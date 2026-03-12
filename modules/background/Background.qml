@@ -101,10 +101,16 @@ Variants {
         }
         readonly property string fillMode: bgRoot.backgroundOptions.fillMode ?? "fill"
         readonly property bool dynamicParallaxRequested: (bgRoot.parallaxOptions.enableWorkspace ?? false) || (bgRoot.parallaxOptions.enableSidebar ?? false)
-        readonly property bool externalMainWallpaperActive: !wallpaperSafetyTriggered && AwwwBackend.supportsVisibleMainWallpaper(bgRoot.wallpaperPathRaw, bgRoot.fillMode, bgRoot.dynamicParallaxRequested, (bgRoot.effectsOptions.enableAnimatedBlur ?? false) || blurLoader.active)
+        readonly property bool externalMainWallpaperActive: !wallpaperSafetyTriggered
+            && AwwwBackend.supportsVisibleMainWallpaper(
+                bgRoot.wallpaperPathRaw,
+                bgRoot.fillMode,
+                bgRoot.dynamicParallaxRequested,
+                bgRoot.effectsOptions.enableAnimatedBlur ?? false
+            )
         property real wallpaperToScreenRatio: Math.min(wallpaperWidth / screen.width, wallpaperHeight / screen.height)
         property real preferredWallpaperScale: bgRoot.parallaxOptions.workspaceZoom ?? 1
-        property real effectiveWallpaperScale: 1
+        property real effectiveWallpaperScale: preferredWallpaperScale
         property int wallpaperWidth: modelData.width
         property int wallpaperHeight: modelData.height
         property real movableXSpace: ((wallpaperWidth / wallpaperToScreenRatio * effectiveWallpaperScale) - screen.width) / 2
@@ -113,6 +119,16 @@ Variants {
         
         // Backdrop mode
         readonly property bool backdropActive: bgRoot.backgroundOptions.backdrop?.hideWallpaper ?? false
+
+        // awww reveal: when parallax is active and awww handles wallpaper,
+        // instantly hide crossfader, let awww transition play, then fade back in.
+        property real _awwwRevealOpacity: 1
+        readonly property bool _awwwParallaxRevealNeeded: AwwwBackend.active
+            && bgRoot.dynamicParallaxRequested
+            && !bgRoot.wallpaperIsGif
+            && !bgRoot.wallpaperIsVideo
+            && !bgRoot.wallpaperSafetyTriggered
+            && !bgRoot.backdropActive
         
         // Colors
         property bool shouldBlur: (GlobalStates.screenLocked && (bgRoot.lockBlurOptions.enable ?? false))
@@ -176,7 +192,38 @@ Variants {
             animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
         }
 
-        onWallpaperPathChanged: bgRoot.updateZoomScale()
+        onWallpaperPathChanged: {
+            if (bgRoot._awwwParallaxRevealNeeded) {
+                // Instantly hide crossfader BEFORE bindings propagate the new source.
+                // The crossfader swaps to the new wallpaper at opacity:0 (invisible).
+                bgRoot._awwwRevealOpacity = 0
+                _awwwRevealAnimation.restart()
+                bgRoot.effectiveWallpaperScale = bgRoot.preferredWallpaperScale
+            }
+            bgRoot.updateZoomScale()
+        }
+
+        onPreferredWallpaperScaleChanged: {
+            if (bgRoot._awwwParallaxRevealNeeded)
+                bgRoot.effectiveWallpaperScale = bgRoot.preferredWallpaperScale
+        }
+
+        SequentialAnimation {
+            id: _awwwRevealAnimation
+
+            // 1. Wait for awww debounce + command exec + transition
+            PauseAnimation {
+                duration: AwwwBackend.transitionDurationMs + 400
+            }
+            // 2. Fade crossfader back in with new wallpaper + parallax
+            NumberAnimation {
+                target: bgRoot
+                property: "_awwwRevealOpacity"
+                to: 1
+                duration: Appearance.calcEffectiveDuration(250)
+                easing.type: Easing.OutQuad
+            }
+        }
 
         function updateZoomScale() {
             wallpaperSizeDebounce.restart()
@@ -221,7 +268,9 @@ Variants {
                     bgRoot.wallpaperWidth = Math.round(width);
                     bgRoot.wallpaperHeight = Math.round(height);
 
-                    if (width <= screenWidth || height <= screenHeight) {
+                    if (bgRoot._awwwParallaxRevealNeeded) {
+                        bgRoot.effectiveWallpaperScale = bgRoot.preferredWallpaperScale;
+                    } else if (width <= screenWidth || height <= screenHeight) {
                         bgRoot.effectiveWallpaperScale = Math.max(screenWidth / width, screenHeight / height);
                     } else {
                         bgRoot.effectiveWallpaperScale = Math.min(bgRoot.preferredWallpaperScale, width / screenWidth, height / screenHeight);
@@ -269,8 +318,11 @@ Variants {
                 property real effectiveValueX: Math.max(0, Math.min(1, valueX))
                 property real effectiveValueY: Math.max(0, Math.min(1, valueY))
                 
-                readonly property bool useParallax: bgRoot.fillMode === "fill" && !bgRoot.wallpaperIsGif && !bgRoot.wallpaperIsVideo
-                readonly property bool showInternalStaticWallpaper: !bgRoot.externalMainWallpaperActive || blurAlwaysLoader.active || blurLoader.active
+                readonly property bool useParallax: bgRoot.fillMode === "fill"
+                    && !bgRoot.wallpaperIsGif
+                    && !bgRoot.wallpaperIsVideo
+                    && !bgRoot.externalMainWallpaperActive
+                readonly property bool showInternalStaticWallpaper: !bgRoot.externalMainWallpaperActive
                 readonly property real targetX: useParallax ? (-(bgRoot.movableXSpace) - (effectiveValueX - 0.5) * 2 * bgRoot.movableXSpace) : 0
                 readonly property real targetY: useParallax ? (-(bgRoot.movableYSpace) - (effectiveValueY - 0.5) * 2 * bgRoot.movableYSpace) : 0
                 readonly property real targetWidth: useParallax ? (bgRoot.wallpaperWidth / bgRoot.wallpaperToScreenRatio * bgRoot.effectiveWallpaperScale) : bgRoot.screen.width
@@ -304,7 +356,7 @@ Variants {
                     return [x1, y1, x2, y2, 1, 1]
                 }
                 Behavior on width {
-                    enabled: Appearance.animationsEnabled && wallpaperContainer.useParallax
+                    enabled: Appearance.animationsEnabled && wallpaperContainer.useParallax && bgRoot._awwwRevealOpacity >= 1
                     NumberAnimation {
                         duration: wallpaperContainer._transitionDur
                         easing.type: Easing.BezierSpline
@@ -312,7 +364,7 @@ Variants {
                     }
                 }
                 Behavior on height {
-                    enabled: Appearance.animationsEnabled && wallpaperContainer.useParallax
+                    enabled: Appearance.animationsEnabled && wallpaperContainer.useParallax && bgRoot._awwwRevealOpacity >= 1
                     NumberAnimation {
                         duration: wallpaperContainer._transitionDur
                         easing.type: Easing.BezierSpline
@@ -320,19 +372,31 @@ Variants {
                     }
                 }
 
-                // Static wallpaper with crossfade transitions (non-GIF, non-video images only)
+                // Static wallpaper — when awww manages the visible wallpaper
+                // (externalMainWallpaperActive), this is just a hidden texture for blur.
+                // Otherwise (parallax, unsupported fill mode, etc.), this is the visible
+                // renderer and uses the user's transition settings.
                 WallpaperCrossfader {
                     id: wallpaper
                     anchors.fill: parent
-                    visible: wallpaperContainer.showInternalStaticWallpaper && !blurLoader.active && !bgRoot.backdropActive && !bgRoot.wallpaperIsGif && !bgRoot.wallpaperIsVideo
+                    visible: !blurLoader.active && !bgRoot.backdropActive && !bgRoot.wallpaperIsGif && !bgRoot.wallpaperIsVideo
+                    opacity: (wallpaperContainer.showInternalStaticWallpaper ? 1 : 0) * bgRoot._awwwRevealOpacity
+                    layer.enabled: !wallpaperContainer.showInternalStaticWallpaper
                     source: (bgRoot.wallpaperSafetyTriggered || bgRoot.wallpaperIsVideo || bgRoot.wallpaperIsGif) ? "" : bgRoot.wallpaperPath
+                    // NEVER use crossfader transitions when awww is active — awww handles all transitions.
+                    // When parallax is on, the crossfader fades out to reveal awww's native transition.
+                    enableTransitions: !AwwwBackend.active
+                        && (Config.options?.background?.transition?.enable ?? true)
+                    transitionType: Config.options?.background?.transition?.type ?? "crossfade"
+                    transitionDirection: Config.options?.background?.transition?.direction ?? "right"
+                    transitionBaseDuration: Config.options?.background?.transition?.duration ?? 800
                     fillMode: bgRoot.fillMode === "fit" ? Image.PreserveAspectFit
                             : bgRoot.fillMode === "tile" ? Image.Tile
                             : bgRoot.fillMode === "center" ? Image.Pad
                             : Image.PreserveAspectCrop
                     sourceSize {
-                        width: bgRoot.screen.width * bgRoot.effectiveWallpaperScale * (bgRoot.monitor?.scale ?? 1)
-                        height: bgRoot.screen.height * bgRoot.effectiveWallpaperScale * (bgRoot.monitor?.scale ?? 1)
+                        width: bgRoot.screen.width * (bgRoot.externalMainWallpaperActive ? 1 : bgRoot.effectiveWallpaperScale) * (bgRoot.monitor?.scale ?? 1)
+                        height: bgRoot.screen.height * (bgRoot.externalMainWallpaperActive ? 1 : bgRoot.effectiveWallpaperScale) * (bgRoot.monitor?.scale ?? 1)
                     }
                 }
 
@@ -446,6 +510,7 @@ Variants {
                         && !bgRoot.backdropActive
                         && !bgRoot.wallpaperIsGif
                         && !bgRoot.wallpaperIsVideo
+                        && !bgRoot.externalMainWallpaperActive
                 anchors.fill: wallpaperContainer
                 sourceComponent: Item {
                     anchors.fill: parent
@@ -453,7 +518,7 @@ Variants {
 
                     GaussianBlur {
                         anchors.fill: parent
-                        source: wallpaperContainer
+                        source: wallpaper
                         // For videos, apply videoBlurStrength as a percentage of the full blur radius
                         radius: bgRoot.wallpaperIsVideo
                             ? Math.round((bgRoot.effectsOptions.blurRadius ?? 32) * Math.max(0, Math.min(1, (bgRoot.effectsOptions.videoBlurStrength ?? 50) / 100)))

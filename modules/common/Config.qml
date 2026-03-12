@@ -550,7 +550,7 @@ Singleton {
                     property string folder: "" // empty = use current wallpaper folder
                 }
                 property JsonObject backend: JsonObject {
-                    property string provider: "internal"
+                    property string provider: "awww"
                     property JsonObject awww: JsonObject {
                         property int transitionFps: 60
                         property int simpleStep: 5
@@ -997,6 +997,7 @@ Singleton {
                 property string layout: "default" // "default" | "compact"
                 property bool keepRightSidebarLoaded: true
                 property bool keepLeftSidebarLoaded: true
+                property bool instantOpen: false
                 property bool openFolderOnDownload: false // Open file manager after wallpaper download
                 property JsonObject translator: JsonObject {
                     property bool enable: true
@@ -1317,6 +1318,12 @@ Singleton {
                     property bool useMainWallpaper: true
                     property bool enableAnimation: true // Enable animated wallpapers (video/gif)
                     property bool hideWhenFullscreen: true
+                    property JsonObject transition: JsonObject {
+                        property bool enable: true
+                        property string type: "crossfade"
+                        property string direction: "right"
+                        property int duration: 800
+                    }
                     property JsonObject effects: JsonObject {
                         property bool enableBlur: false
                         property int blurRadius: 32

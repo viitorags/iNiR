@@ -131,30 +131,32 @@ Variants {
         Item {
             anchors.fill: parent
 
-            // Static Image (non-GIF, non-video images only)
-            Image {
+            // Static wallpaper with crossfader transitions
+            WallpaperCrossfader {
                 id: wallpaper
                 anchors.fill: parent
                 fillMode: Image.PreserveAspectCrop
                 source: backdropWindow.effectiveWallpaperPath && !backdropWindow.wallpaperIsGif && !backdropWindow.wallpaperIsVideo
-                    ? (backdropWindow.effectiveWallpaperPath.startsWith("file://") 
-                        ? backdropWindow.effectiveWallpaperPath 
+                    ? (backdropWindow.effectiveWallpaperPath.startsWith("file://")
+                        ? backdropWindow.effectiveWallpaperPath
                         : "file://" + backdropWindow.effectiveWallpaperPath)
                     : ""
-                asynchronous: true
-                cache: true
-                smooth: true
-                mipmap: true
+                enableTransitions: Config.options?.background?.transition?.enable ?? true
+                transitionType: Config.options?.background?.transition?.type ?? "crossfade"
+                transitionDirection: Config.options?.background?.transition?.direction ?? "right"
+                transitionBaseDuration: Config.options?.background?.transition?.duration ?? 800
                 visible: !backdropWindow.useAuroraStyle && !backdropWindow.wallpaperIsGif && !backdropWindow.wallpaperIsVideo
+            }
 
-                layer.enabled: Appearance.effectsEnabled && backdropWindow.backdropBlurRadius > 0 && !backdropWindow.useAuroraStyle
-                layer.effect: MultiEffect {
-                    blurEnabled: true
-                    blur: backdropWindow.backdropBlurRadius / 100.0
-                    blurMax: 64
-                    saturation: backdropWindow.backdropSaturation
-                    contrast: backdropWindow.backdropContrast
-                }
+            MultiEffect {
+                anchors.fill: parent
+                source: wallpaper
+                visible: wallpaper.ready && !backdropWindow.useAuroraStyle && !backdropWindow.wallpaperIsGif && !backdropWindow.wallpaperIsVideo
+                blurEnabled: backdropWindow.backdropBlurRadius > 0
+                blur: backdropWindow.backdropBlurRadius / 100.0
+                blurMax: 64
+                saturation: backdropWindow.backdropSaturation
+                contrast: backdropWindow.backdropContrast
             }
             
             // Animated GIF wallpaper
