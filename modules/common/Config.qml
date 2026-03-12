@@ -297,6 +297,7 @@ Singleton {
                     property bool enableVSCode: true
                     property bool enableChrome: true
                     property bool enableSpicetify: false
+                    property bool enableOpenCode: true
                     property JsonObject vscodeEditors: JsonObject {
                         property bool code: true           // Official VSCode
                         property bool codium: true         // VSCodium (FOSS)
@@ -325,6 +326,7 @@ Singleton {
                         property bool btop: true
                         property bool lazygit: true
                         property bool yazi: true
+                        property bool omp: true
                     }
                     property JsonObject terminalGenerationProps: JsonObject {
                         property real harmony: 0.6

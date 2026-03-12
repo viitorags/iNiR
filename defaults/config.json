@@ -144,7 +144,25 @@
                 "starship": true,
                 "btop": true,
                 "lazygit": true,
-                "yazi": true
+                "yazi": true,
+                "omp": true
+            },
+            "enableOpenCode": true,
+            "vscodeEditors": {
+                "code": true,
+                "codium": true,
+                "codeOss": true,
+                "codeInsiders": true,
+                "cursor": true,
+                "windsurf": true,
+                "windsurfNext": true,
+                "qoder": true,
+                "antigravity": true,
+                "positron": true,
+                "voidEditor": true,
+                "melty": true,
+                "pearai": true,
+                "aide": true
             }
         },
         "typography": {
