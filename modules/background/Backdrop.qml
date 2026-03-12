@@ -133,7 +133,7 @@ Variants {
         Item {
             anchors.fill: parent
 
-            // Static wallpaper with crossfader transitions
+            // Static wallpaper with crossfade transitions (shares workspace transition settings)
             WallpaperCrossfader {
                 id: wallpaper
                 anchors.fill: parent
@@ -143,15 +143,11 @@ Variants {
                         ? backdropWindow.effectiveWallpaperPath
                         : "file://" + backdropWindow.effectiveWallpaperPath)
                     : ""
-                asynchronous: true
-                cache: false
-                smooth: true
-                mipmap: true
                 visible: !backdropWindow.useAuroraStyle && !backdropWindow.wallpaperIsGif && !backdropWindow.wallpaperIsVideo
                 // Constrain decoded size to monitor resolution — no need for native
                 // resolution since backdrop is always screen-sized with blur.
-                sourceSize.width: backdropWindow.screen?.width ?? 1920
-                sourceSize.height: backdropWindow.screen?.height ?? 1080
+                sourceSize: Qt.size(backdropWindow.screen?.width ?? 1920, backdropWindow.screen?.height ?? 1080)
+            }
 
             MultiEffect {
                 anchors.fill: parent
