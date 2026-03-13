@@ -12,6 +12,8 @@ MouseArea {
     property bool isDirectory: fileModelData.fileIsDir
     property bool useThumbnail: Images.isValidMediaByName(fileModelData.fileName)
 
+    readonly property real _dpr: root.window ? root.window.devicePixelRatio : 1
+
     property alias colBackground: background.color
     property alias colText: wallpaperItemName.color
     property alias radius: background.radius
@@ -67,8 +69,8 @@ MouseArea {
                         cache: false
                         fillMode: Image.PreserveAspectCrop
                         clip: true
-                        sourceSize.width: wallpaperItemColumnLayout.width
-                        sourceSize.height: wallpaperItemColumnLayout.height - wallpaperItemColumnLayout.spacing - wallpaperItemName.height
+                        sourceSize.width: Math.round(wallpaperItemImageContainer.width * root._dpr)
+                        sourceSize.height: Math.round(wallpaperItemImageContainer.height * root._dpr)
 
                         Connections {
                             target: Wallpapers

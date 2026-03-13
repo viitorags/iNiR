@@ -74,6 +74,10 @@ Item {
             : Translation.tr("Arrows, wheel or click to navigate")
 
     property string _lastThumbnailSizeName: "x-large"
+    readonly property string _filmstripThumbnailSizeName: Images.thumbnailSizeNameForDimensions(
+        Math.round((root.previewMode ? 108 : 132) * root._dpr * 1.2),
+        Math.round(root.filmstripHeight * root._dpr * 1.2)
+    )
     property int currentIndex: 0
     property bool previewMode: false
     property bool showKeyboardGuide: true
@@ -965,8 +969,16 @@ Item {
                                         anchors.centerIn: parent
                                         text: Translation.tr("Active")
                                         color: ColorUtils.contrastColor(root._accent)
-                                        font.pixelSize: Appearance.font.pixelSize.smaller
+                                        font.pixelSize: Appearance.font.pixelSize.small
                                         font.weight: Font.DemiBold
+                                        layer.enabled: true
+                                        layer.effect: GE.DropShadow {
+                                            verticalOffset: 1
+                                            horizontalOffset: 0
+                                            radius: 6
+                                            samples: 16
+                                            color: ColorUtils.applyAlpha(Appearance.colors.colScrim, 0.55)
+                                        }
                                     }
                                 }
                             }
@@ -1214,7 +1226,7 @@ Item {
                             visible: !fileIsDir && filePath.length > 0 && Images.isValidMediaByName(fileName)
                             generateThumbnail: true
                             sourcePath: filePath
-                            thumbnailSizeName: "large"
+                            thumbnailSizeName: root._filmstripThumbnailSizeName
                             cache: true
                             fillMode: Image.PreserveAspectCrop
                             clip: true

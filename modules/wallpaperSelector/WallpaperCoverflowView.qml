@@ -110,6 +110,11 @@ Item {
         : Appearance.inirEverywhere ? Appearance.inir.roundingNormal
         : Appearance.rounding.normal
 
+    readonly property string _sideThumbnailSizeName: Images.thumbnailSizeNameForDimensions(
+        Math.round(root.cardW * root._dpr * 0.9),
+        Math.round(root.cardH * root._dpr * 0.9)
+    )
+
     function updateThumbnails() {
         const w = Math.round(root.cardW * root._dpr * 2)
         const h = Math.round(root.cardH * root._dpr * 2)
@@ -623,7 +628,7 @@ Item {
                             visible: shouldShow
                             generateThumbnail: shouldShow
                             sourcePath: shouldShow ? slot.filePath : ""
-                            thumbnailSizeName: slot.isCurrent ? root._lastThumbnailSizeName : "large"
+                            thumbnailSizeName: slot.isCurrent ? root._lastThumbnailSizeName : root._sideThumbnailSizeName
                             cache: true
                             asynchronous: true
                             retainWhileLoading: true
@@ -756,9 +761,17 @@ Item {
                                             id: activeBadgeText
                                             anchors.centerIn: parent
                                             text: Translation.tr("Active")
-                                            font.pixelSize: Appearance.font.pixelSize.smaller
+                                            font.pixelSize: Appearance.font.pixelSize.small
                                             font.weight: Font.DemiBold
                                             color: ColorUtils.contrastColor(root._accent)
+                                            layer.enabled: true
+                                            layer.effect: GE.DropShadow {
+                                                verticalOffset: 1
+                                                horizontalOffset: 0
+                                                radius: 6
+                                                samples: 16
+                                                color: ColorUtils.applyAlpha(Appearance.colors.colScrim, 0.55)
+                                            }
                                         }
                                     }
                                 }

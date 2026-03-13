@@ -16,6 +16,7 @@ MouseArea {
     property real previewCellAspectRatio: 4 / 3
     property bool useDarkMode: Appearance.m3colors.darkmode
     property string _lastThumbnailSizeName: ""
+    readonly property real _dpr: root.window ? root.window.devicePixelRatio : 1
 
     // Multi-monitor support — capture focused monitor at open time
     property string _lockedTarget: ""
@@ -53,7 +54,10 @@ MouseArea {
 
     function updateThumbnails() {
         const totalImageMargin = (Appearance.sizes.wallpaperSelectorItemMargins + Appearance.sizes.wallpaperSelectorItemPadding) * 2
-        const thumbnailSizeName = Images.thumbnailSizeNameForDimensions(grid.cellWidth - totalImageMargin, grid.cellHeight - totalImageMargin)
+        const thumbnailSizeName = Images.thumbnailSizeNameForDimensions(
+            Math.round((grid.cellWidth - totalImageMargin) * root._dpr),
+            Math.round((grid.cellHeight - totalImageMargin) * root._dpr)
+        )
         root._lastThumbnailSizeName = thumbnailSizeName
         Wallpapers.generateThumbnail(thumbnailSizeName)
     }

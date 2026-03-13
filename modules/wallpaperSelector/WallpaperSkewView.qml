@@ -63,6 +63,14 @@ Item {
     readonly property int cardWidth: Math.round(Math.min(root.width * 0.22, 320))
     readonly property int cardHeight: Math.round(cardWidth * 1.4)
 
+    readonly property string _thumbSizeName: {
+        const w = Math.round(root.cardWidth * 1.6 * root._dpr)
+        const h = Math.round(root.cardHeight * root._dpr)
+        let s = Images.thumbnailSizeNameForDimensions(w, h)
+        if (s === "normal" || s === "large") s = "x-large"
+        return s
+    }
+
     // ═══════════════════════════════════════════════════
     // STYLE TOKENS (from CoverflowView)
     // ═══════════════════════════════════════════════════
@@ -229,7 +237,7 @@ Item {
         for (let i = 0; i < Math.min(totalCount, 30); i++) {
             const fp = _filePath(i)
             if (fp && fp.length > 0 && !_fileIsDir(i)) {
-                Wallpapers.ensureThumbnailForPath(fp, "x-large")
+                Wallpapers.ensureThumbnailForPath(fp, root._thumbSizeName)
                 if (_mediaKind(_fileName(i), false) === "video")
                     Wallpapers.ensureVideoFirstFrame(fp)
             }
@@ -437,7 +445,7 @@ Item {
                         fillMode: Image.PreserveAspectCrop
                         generateThumbnail: true
                         sourcePath: delegateRoot.filePath
-                        thumbnailSizeName: "x-large"
+                        thumbnailSizeName: root._thumbSizeName
                         cache: true
                         asynchronous: true
                         retainWhileLoading: true
@@ -563,8 +571,16 @@ Item {
                             anchors.centerIn: parent
                             text: Translation.tr("Active")
                             color: ColorUtils.contrastColor(root._accent)
-                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            font.pixelSize: Appearance.font.pixelSize.small
                             font.weight: Font.DemiBold
+                            layer.enabled: true
+                            layer.effect: GE.DropShadow {
+                                verticalOffset: 1
+                                horizontalOffset: 0
+                                radius: 6
+                                samples: 16
+                                color: ColorUtils.applyAlpha(Appearance.colors.colScrim, 0.55)
+                            }
                         }
                     }
                 }
