@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# iNiR setup - Simplified installer
-# Commands: install, update, doctor, rollback (or TUI if no args)
+# iNiR setup - installer and maintenance entrypoint
+# Commands: install, update, status, migrate, doctor, rollback, my-changes, uninstall (or TUI if no args)
 
 cd "$(dirname "$0")"
 REPO_ROOT="$(pwd)"
@@ -133,10 +133,17 @@ show_help() {
     tui_key_value "Usage:" "./setup [command] [options]"
     echo ""
 
+    tui_subtitle "Role"
+    tui_dim "  setup owns installation and maintenance flows."
+    tui_dim "  The \`inir\` launcher forwards install/update/doctor/status/migrate/rollback/my-changes/uninstall back to this script."
+    tui_dim "  Use \`inir\` for daily runtime control, and \`./setup\` when you want the underlying maintenance entrypoint or the interactive TUI."
+    echo ""
+
     tui_subtitle "Commands"
     tui_list_item "(none)      Interactive menu"
     tui_list_item "install     Full installation (deps + config + files)"
     tui_list_item "update      Check remote, pull, sync, restart shell"
+    tui_list_item "status      Show install mode, update strategy, and health"
     tui_list_item "migrate     Review/apply config migrations"
     tui_list_item "doctor      Diagnose and fix problems"
     tui_list_item "rollback    Restore previous snapshot"
@@ -153,9 +160,11 @@ show_help() {
 
     tui_subtitle "Examples"
     tui_dim "  ./setup install      # Install iNiR once"
+    tui_dim "  inir update          # Wrapper around ./setup update"
+    tui_dim "  inir doctor          # Wrapper around ./setup doctor"
+    tui_dim "  inir status          # Wrapper around ./setup status"
     tui_dim "  inir run             # Start iNiR"
     tui_dim "  inir settings        # Open settings"
-    tui_dim "  inir doctor          # Diagnose problems"
     tui_dim "  inir logs            # Check recent runtime logs"
     tui_dim "  inir repair          # Fix + restart + log-check"
     tui_dim "  ./setup              # Advanced interactive menu"
@@ -797,22 +806,37 @@ run_update() {
 
     II_SOURCE="${REPO_ROOT}"
     II_TARGET="${XDG_CONFIG_HOME}/quickshell/inir"
+    local legacy_runtime_dir="${XDG_CONFIG_HOME}/quickshell/ii"
+
+    for dir in "$XDG_BIN_HOME" "$XDG_CACHE_HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$II_TARGET"; do
+        [[ -n "$dir" ]] && mkdir -p "$dir"
+    done
 
     # Check if source and target are the same (dev setup)
     local src_real=$(realpath "$II_SOURCE" 2>/dev/null || echo "$II_SOURCE")
     local tgt_real=$(realpath "$II_TARGET" 2>/dev/null || echo "$II_TARGET")
 
     if [[ "$src_real" != "$tgt_real" ]]; then
-        # Check for user modifications before syncing
+        local runtime_compare_dir="$II_TARGET"
+        local runtime_manifest=""
+        local legacy_transition=false
+
+        if [[ ! -f "${II_TARGET}/shell.qml" ]] && [[ -f "${legacy_runtime_dir}/shell.qml" ]]; then
+            runtime_compare_dir="$legacy_runtime_dir"
+            legacy_transition=true
+            tui_info "Detected legacy quickshell/ii runtime"
+        fi
+
         PRESERVED_MODS_DIR=""
-        if [[ -f "${II_TARGET}/.inir-manifest" ]] && manifest_has_checksums "${II_TARGET}/.inir-manifest"; then
+        runtime_manifest=$(find_runtime_manifest_file "$runtime_compare_dir" 2>/dev/null || true)
+        if [[ -n "$runtime_manifest" ]] && manifest_has_checksums "$runtime_manifest"; then
             echo ""
             tui_info "Checking for local modifications..."
 
             local modified_files_str
             local added_files_str
-            modified_files_str=$(detect_user_modifications "$II_TARGET" "${II_TARGET}/.inir-manifest")
-            added_files_str=$(detect_user_additions "$II_TARGET" "${II_TARGET}/.inir-manifest")
+            modified_files_str=$(detect_user_modifications "$runtime_compare_dir" "$runtime_manifest")
+            added_files_str=$(detect_user_additions "$runtime_compare_dir" "$runtime_manifest")
 
             local mod_count=0
             local add_count=0
@@ -821,12 +845,17 @@ run_update() {
             local total_mods=$((mod_count + add_count))
 
             if [[ $total_mods -gt 0 ]]; then
-                if ! handle_user_modifications "$modified_files_str" "$added_files_str"; then
+                if ! handle_user_modifications "$modified_files_str" "$added_files_str" "$runtime_compare_dir"; then
                     return 1  # User cancelled
                 fi
             else
                 tui_success "No local modifications detected"
             fi
+        elif [[ "$legacy_transition" == "true" ]]; then
+            echo ""
+            tui_info "Preserving legacy quickshell/ii runtime..."
+            PRESERVED_MODS_DIR=$(preserve_runtime_tree "$runtime_compare_dir" "legacy-runtime")
+            tui_success "Legacy runtime preserved"
         fi
 
         echo ""
@@ -877,6 +906,9 @@ run_update() {
         mkdir -p "$XDG_BIN_HOME"
         cp -f "${REPO_ROOT}/scripts/inir" "$launcher_target"
         chmod +x "$launcher_target"
+        if ! command -v inir &>/dev/null && [[ ":$PATH:" != *":${XDG_BIN_HOME}:"* ]]; then
+            tui_warn "Launcher installed to ${launcher_target}, but ${XDG_BIN_HOME} is not in PATH for this shell"
+        fi
     fi
 
     if [[ -f "${REPO_ROOT}/assets/icons/desktop-symbolic.svg" ]]; then

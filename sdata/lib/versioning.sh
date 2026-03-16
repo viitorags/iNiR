@@ -11,6 +11,9 @@
 RUNTIME_DIR_USER="${XDG_CONFIG_HOME}/quickshell/inir"
 RUNTIME_DIR_SYSTEM_LOCAL="${INIR_SYSTEM_RUNTIME_DIR_LOCAL:-/usr/local/share/quickshell/inir}"
 RUNTIME_DIR_SYSTEM="${INIR_SYSTEM_RUNTIME_DIR:-/usr/share/quickshell/inir}"
+LEGACY_RUNTIME_DIR_USER="${XDG_CONFIG_HOME}/quickshell/ii"
+LEGACY_RUNTIME_DIR_SYSTEM_LOCAL="${INIR_LEGACY_SYSTEM_RUNTIME_DIR_LOCAL:-/usr/local/share/quickshell/ii}"
+LEGACY_RUNTIME_DIR_SYSTEM="${INIR_LEGACY_SYSTEM_RUNTIME_DIR:-/usr/share/quickshell/ii}"
 VERSION_FILE_LOCAL="${XDG_CONFIG_HOME}/illogical-impulse/version.json"
 VERSION_FILE_RUNTIME_USER="${RUNTIME_DIR_USER}/version.json"
 VERSION_FILE_RUNTIME_SYSTEM_LOCAL="${RUNTIME_DIR_SYSTEM_LOCAL}/version.json"
@@ -33,6 +36,13 @@ get_runtime_shell_dir() {
 
     local candidate
     for candidate in "$RUNTIME_DIR_USER" "$RUNTIME_DIR_SYSTEM_LOCAL" "$RUNTIME_DIR_SYSTEM"; do
+        if [[ -n "$candidate" && -f "$candidate/shell.qml" ]]; then
+            printf '%s' "$candidate"
+            return
+        fi
+    done
+
+    for candidate in "$LEGACY_RUNTIME_DIR_USER" "$LEGACY_RUNTIME_DIR_SYSTEM_LOCAL" "$LEGACY_RUNTIME_DIR_SYSTEM"; do
         if [[ -n "$candidate" && -f "$candidate/shell.qml" ]]; then
             printf '%s' "$candidate"
             return

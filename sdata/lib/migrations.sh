@@ -90,6 +90,24 @@ create_backup() {
     echo "$backup_dir"
 }
 
+resolve_migration_target_file() {
+    local target_file="$1"
+    [[ -n "$target_file" ]] || return 0
+
+    local home_config="${HOME}/.config"
+    local home_cache="${HOME}/.cache"
+    local home_data="${HOME}/.local/share"
+    local home_state="${HOME}/.local/state"
+    local resolved="${target_file/#\~/$HOME}"
+
+    resolved="${resolved/#$home_config/${XDG_CONFIG_HOME:-$home_config}}"
+    resolved="${resolved/#$home_cache/${XDG_CACHE_HOME:-$home_cache}}"
+    resolved="${resolved/#$home_data/${XDG_DATA_HOME:-$home_data}}"
+    resolved="${resolved/#$home_state/${XDG_STATE_HOME:-$home_state}}"
+
+    printf '%s' "$resolved"
+}
+
 #####################################################################################
 # Migration Discovery
 #####################################################################################
@@ -206,7 +224,8 @@ apply_migration() {
     fi
     
     # Check if target file exists
-    local target_file="${MIGRATION_TARGET_FILE/#\~/$HOME}"
+    local target_file
+    target_file=$(resolve_migration_target_file "$MIGRATION_TARGET_FILE")
     if [[ -n "$target_file" && ! -f "$target_file" ]]; then
         tui_check_skip "Target file not found: $(basename "$target_file")"
         mark_migration_skipped "$migration_id"
@@ -247,7 +266,9 @@ show_migration_card() {
     
     load_migration "$migration_id" || return 1
     
-    local target_short=$(basename "${MIGRATION_TARGET_FILE/#\~/$HOME}" 2>/dev/null || echo "N/A")
+    local resolved_target
+    resolved_target=$(resolve_migration_target_file "$MIGRATION_TARGET_FILE")
+    local target_short=$(basename "$resolved_target" 2>/dev/null || echo "N/A")
     
     echo ""
     if $HAS_GUM; then

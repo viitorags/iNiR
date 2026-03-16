@@ -34,6 +34,10 @@ create_snapshot() {
     if [[ -d "${XDG_CONFIG_HOME}/quickshell/inir" ]]; then
         rsync -a --exclude='.inir-manifest' "${XDG_CONFIG_HOME}/quickshell/inir/" "${snapshot_dir}/inir/"
     fi
+
+    if [[ -d "${XDG_CONFIG_HOME}/quickshell/ii" ]]; then
+        rsync -a --exclude='.ii-manifest' "${XDG_CONFIG_HOME}/quickshell/ii/" "${snapshot_dir}/ii/"
+    fi
     
     # Copy user config
     if [[ -f "${XDG_CONFIG_HOME}/illogical-impulse/config.json" ]]; then

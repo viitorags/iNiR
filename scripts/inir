@@ -16,8 +16,7 @@ usage() {
     cat <<'EOF'
 Usage: inir <command> [options]
 
-Commands:
-  install [args...]
+Launcher/runtime commands:
   start [-c PATH]
   stop [-c PATH]
   run [--daemon] [--session] [-c PATH]
@@ -34,35 +33,43 @@ Commands:
   repair [-c PATH]
   path [-c PATH]
   test-local [-c PATH] [--with-runtime]
-  setup [-c PATH] [args...]
   service <install|uninstall|enable|disable|start|stop|restart|status|logs> [args...]
-  doctor [-c PATH]
-  migrate [-c PATH]
-  status [-c PATH]
+
+Setup-backed maintenance commands:
+  install [args...]
   update [-c PATH]
-  version [--json]
+  doctor [-c PATH]
+  status [-c PATH]
+  migrate [-c PATH]
   rollback [-c PATH]
   my-changes [-c PATH]
   uninstall [-c PATH]
+  setup [-c PATH] [args...]
+
+Other:
+  version [--json]
+
+Notes:
+  - `inir` is the daily launcher/operator CLI.
+  - The maintenance commands above delegate to `setup`; they do not implement a separate install/update engine.
+  - Use `./setup` directly for the interactive TUI or when you want the underlying installer/updater entrypoint.
 EOF
 }
 
 usage_short() {
     cat <<'EOF'
 Most people only need:
-  inir install
+  ./setup install
   inir run
   inir settings
-  inir settings-window
+  inir update
+  inir status
+  inir doctor
   inir overview toggle
   inir terminal
-  inir shell-update diagnose
-  inir doctor
   inir logs
-  inir version
-  inir service status
   inir repair
-  inir status
+  ./setup
 EOF
 }
 

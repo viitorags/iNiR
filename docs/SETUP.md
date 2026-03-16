@@ -21,10 +21,12 @@ This is the recommended way to use the setup script if you're unsure which comma
 There are now three complementary entry points:
 
 - `./setup`
-  - installer, updater, migration runner, rollback, doctor, uninstall
+  - authoritative installer and maintenance entry point
+  - owns install, update, doctor, status, migrate, rollback, my-changes, uninstall
 - `inir`
-  - runtime launcher and operator CLI
-  - use it to start, restart, open settings, inspect status, or call IPC against the active runtime
+  - daily launcher and operator CLI
+  - owns runtime actions like `run`, `start`, `restart`, `settings`, `logs`, `repair`, `terminal`, and IPC calls
+  - forwards maintenance commands like `install`, `update`, `doctor`, `status`, `migrate`, `rollback`, `my-changes`, and `uninstall` back to `setup`
 - `make install`
   - packaging-style local install for packagers, testers, or source installs that should behave like a packaged shell payload
 
@@ -32,13 +34,15 @@ Use them like this:
 
 - install once:
   - `./setup install`
+- maintenance via launcher wrapper:
+  - `inir update`
+  - `inir doctor`
+  - `inir status`
 - runtime operation:
   - `inir run`
   - `inir settings`
-  - `inir doctor`
   - `inir logs`
   - `inir repair`
-  - `inir status`
 - local distribution validation:
   - `make test-local`
   - `inir test-local`
@@ -75,6 +79,8 @@ That installs:
 inir update
 ```
 
+`inir update` and `./setup update` run the same update engine. `inir update` is the convenient launcher-facing entry point; `./setup update` is the underlying maintenance command and the better choice when you also want the interactive TUI nearby.
+
 What happens:
 1. Checks remote for new commits
 2. Creates snapshot (for rollback)
@@ -87,7 +93,7 @@ What happens:
 9. Checks for missing system packages
 10. Updates Python venv packages
 
-Your user configs (`config.json`, `config.kdl`) are never touched.
+The runtime sync does not overwrite your user configs directly. If a release needs config changes, required or optional migrations may update `config.json` or `config.kdl` with backup/rollback coverage.
 
 If `setup` detects that the active iNiR installation is externally managed, `inir update` does **not** pull or sync repo files into the runtime. In that case it:
 
@@ -101,6 +107,8 @@ If `setup` detects that the active iNiR installation is externally managed, `ini
 ```bash
 inir doctor
 ```
+
+`inir doctor` is a wrapper around `./setup doctor`.
 
 Diagnoses and **automatically fixes** common issues:
 - Missing directories
@@ -165,23 +173,23 @@ Useful when you want to see what you've changed or restore defaults after custom
 |---------|-------------|
 | `./setup` | Interactive menu |
 | `./setup install` | Full installation |
-| `inir update` | Check remote, pull, sync, restart |
+| `inir update` | Wrapper around `./setup update` |
 | `./setup status` | Show install mode, update strategy, and health |
 | `./setup migrate` | Review and apply config migrations |
 | `./setup doctor` | Diagnose and auto-fix |
 | `./setup rollback` | Restore previous snapshot |
 | `./setup my-changes` | View and restore user modifications |
 | `./setup uninstall` | Remove iNiR from system |
-| `inir install` | Run the installer from the repo/runtime root |
+| `inir install` | Wrapper around `./setup install` from the repo/runtime root |
 | `inir start` | Start iNiR in the background |
 | `inir stop` | Stop the active runtime |
 | `inir run` | Launch iNiR from the active runtime |
 | `inir restart` | Restart the active runtime |
 | `inir settings` | Open settings via IPC |
-| `inir doctor` | Run setup doctor from the active runtime |
+| `inir doctor` | Wrapper around `./setup doctor` |
 | `inir logs` | Show recent runtime logs |
 | `inir repair` | Doctor + restart + filtered log check |
-| `inir status` | Show runtime path, update mode, and health |
+| `inir status` | Wrapper around `./setup status` |
 | `inir test-local` | Run local distribution checks |
 
 Options: `-y` (skip prompts), `-q` (quiet), `-h` (help)
@@ -213,6 +221,8 @@ You can reach the same status through:
 ```bash
 inir status
 ```
+
+`inir status` is a wrapper around `./setup status`.
 
 ## Local validation
 

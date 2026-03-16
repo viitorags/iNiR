@@ -139,10 +139,10 @@ El instalador maneja dependencias, configs, tematización — todo.
 **Actualizar:**
 
 ```bash
-./setup update        # Chequea remoto, descarga, sincroniza, reinicia el shell
+inir update           # Wrapper cómodo del mismo flujo de update de setup
 ```
 
-También podés ejecutar `./setup` sin argumentos para abrir el menú TUI interactivo donde podés actualizar, migrar, hacer rollback, diagnosticar, y más.
+`inir update` y `./setup update` usan el mismo motor de actualización. Usá `inir update` como comando diario del launcher, y `./setup` cuando quieras el entrypoint de mantenimiento subyacente o el menú TUI interactivo.
 
 Tus configs no se tocan. Las features nuevas vienen como migraciones opcionales. Incluye rollback por si algo se rompe (`./setup rollback`).
 

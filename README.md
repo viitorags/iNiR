@@ -128,7 +128,7 @@ cd inir
 inir run
 ```
 
-Install once with `./setup install`. After that, use `inir` for normal life.
+Install once with `./setup install`. After that, use `inir` for daily launching and runtime actions. Maintenance commands like `inir update`, `inir doctor`, and `inir status` are convenience wrappers that delegate back to `setup`.
 
 **Daily commands:**
 
@@ -159,6 +159,8 @@ inir update
 ```
 
 If you want the advanced TUI menu, run `./setup`.
+
+`inir update` and `./setup update` use the same update flow. Use `inir update` as the normal launcher-facing command, and `./setup` when you want the underlying maintenance entrypoint or the interactive menu.
 
 Your configs stay untouched. New features come as optional migrations. Rollback included if something breaks (`./setup rollback`).
 
