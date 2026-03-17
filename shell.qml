@@ -36,6 +36,7 @@ ShellRoot {
     property var _fontSyncService: FontSyncService
 
     Component.onCompleted: {
+        Quickshell.watchFiles = true;
         root._log("[Shell] Initializing singletons");
         Hyprsunset.load();
         FirstRunExperience.load();

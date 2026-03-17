@@ -123,6 +123,7 @@
             "enableSpicetify": false,
             "useBackdropForColors": false,
             "colorsOnlyMode": false,
+            "previewSourcePath": "",
             "terminalGenerationProps": {
                 "forceDarkMode": false,
                 "harmonizeThreshold": 100,
@@ -181,6 +182,7 @@
     },
     "apps": {
         "bluetooth": "blueman-manager",
+        "browser": "firefox",
         "discord": "discord",
         "manageUser": "kcmshell6 kcm_users",
         "network": "nm-connection-editor",
@@ -1078,8 +1080,10 @@
         },
         "bar": {
             "bottom": true,
+            "iconSize": 26,
             "leftAlignApps": false,
             "monochromeIcons": false,
+            "searchIconSize": 24,
             "tintTrayIcons": false
         },
         "actionCenter": {

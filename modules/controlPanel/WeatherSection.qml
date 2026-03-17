@@ -110,7 +110,7 @@ Rectangle {
                     : root.inirEverywhere ? Appearance.inir.colLayer2Hover
                     : root.auroraEverywhere ? Appearance.aurora.colSubSurfaceHover
                     : Appearance.colors.colLayer2Hover
-                onClicked: Weather.fetchWeather()
+                onClicked: Weather.forceRefresh()
                 contentItem: MaterialSymbol {
                     anchors.centerIn: parent
                     text: "refresh"

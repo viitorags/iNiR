@@ -921,7 +921,7 @@ Item {
                                 : root.inirStyle ? Appearance.inir.roundingSmall : Appearance.rounding.full
                             colBackground: "transparent"
                             colBackgroundHover: root.colCardHover
-                            onClicked: Weather.fetchWeather()
+                            onClicked: Weather.forceRefresh()
                             contentItem: MaterialSymbol {
                                 anchors.centerIn: parent
                                 text: "refresh"

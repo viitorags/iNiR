@@ -316,6 +316,7 @@ Singleton {
                     }
                     property bool useBackdropForColors: false
                     property bool colorsOnlyMode: false
+                    property string previewSourcePath: ""
                     property JsonObject terminals: JsonObject {
                         property bool kitty: true
                         property bool alacritty: true
@@ -439,6 +440,7 @@ Singleton {
                 property string networkEthernet: "kcmshell6 kcm_networkmanagement"
                 property string taskManager: "missioncenter"
                 property string terminal: "kitty" // This is only for shell actions
+                property string browser: "firefox" // Used by launcher-backed browser shortcuts
                 property string volumeMixer: `~/.config/quickshell/inir/scripts/launch_first_available.sh "pavucontrol-qt" "pavucontrol"`
                 property string discord: "discord" // Shell command to launch Discord client
                 property string update: "kitty -e sudo pacman -Syu" // Command to run system updates
@@ -1366,6 +1368,8 @@ Singleton {
                     property bool leftAlignApps: false
                     property bool monochromeIcons: false
                     property bool tintTrayIcons: false
+                    property int iconSize: 26
+                    property int searchIconSize: 24
                 }
                 property JsonObject actionCenter: JsonObject {
                     property list<string> toggles: [ "network", "bluetooth", "easyEffects", "powerProfile", "idleInhibitor", "nightLight", "darkMode", "antiFlashbang", "cloudflareWarp", "mic", "musicRecognition", "notifications", "onScreenKeyboard", "gameMode", "screenSnip", "colorPicker" ]

@@ -219,7 +219,7 @@ Item {
 
                     SmallIconButton {
                         iconName: "refresh"
-                        onClicked: Weather.fetchWeather()
+                        onClicked: Weather.forceRefresh()
                         StyledToolTip { text: Translation.tr("Refresh") }
                     }
 

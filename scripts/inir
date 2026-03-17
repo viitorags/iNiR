@@ -24,6 +24,7 @@ Launcher/runtime commands:
   kill [-c PATH]
   logs [--full]
   terminal [-c PATH] [args...]
+  browser [-c PATH] [url]
   close-window [-c PATH]
   ipc [-c PATH] <target> <function> [args...]
   <ipc-target> [-c PATH] <function> [args...]
@@ -67,6 +68,7 @@ Most people only need:
   inir doctor
   inir overview toggle
   inir terminal
+  inir browser
   inir logs
   inir repair
   ./setup
@@ -84,19 +86,33 @@ find_qs() {
     fi
 }
 
+canonicalize_path() {
+    local candidate="${1:-}"
+    if [[ -z "$candidate" ]]; then
+        printf '%s' "$candidate"
+        return
+    fi
+    if command -v readlink >/dev/null 2>&1; then
+        readlink -f "$candidate" 2>/dev/null || printf '%s' "$candidate"
+    else
+        printf '%s' "$candidate"
+    fi
+}
+
 resolve_config_dir() {
     if [[ -n "$config_dir" ]]; then
         if [[ ! -f "$config_dir/shell.qml" ]]; then
             echo "Invalid iNiR config path: $config_dir" >&2
             exit 1
         fi
+        config_dir="$(canonicalize_path "$config_dir")"
         return
     fi
 
     local candidate
     for candidate in "$user_config_dir" "$system_config_dir" "$fallback_system_config_dir"; do
         if [[ -n "$candidate" && -f "$candidate/shell.qml" ]]; then
-            config_dir="$candidate"
+            config_dir="$(canonicalize_path "$candidate")"
             return
         fi
     done
@@ -535,6 +551,38 @@ run_ipc_target_command() {
     exec "$qs_bin" -p "$config_dir" ipc call "$target" "$@"
 }
 
+launch_configured_browser() {
+    local config_file="${XDG_CONFIG_HOME:-$HOME/.config}/illogical-impulse/config.json"
+    local browser=""
+
+    if [[ -f "$config_file" ]]; then
+        if command -v jq >/dev/null 2>&1; then
+            browser="$(jq -r '.apps.browser // empty' "$config_file" 2>/dev/null || true)"
+        else
+            browser="$(sed -n 's/.*"browser"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$config_file" | head -1)"
+        fi
+    fi
+
+    browser="${browser:-xdg-open}"
+
+    if command -v "$browser" >/dev/null 2>&1; then
+        if [[ $# -gt 0 ]]; then
+            exec "$browser" "$@"
+        fi
+        exec "$browser"
+    fi
+
+    if command -v xdg-open >/dev/null 2>&1; then
+        if [[ $# -gt 0 ]]; then
+            exec xdg-open "$@"
+        fi
+        exec xdg-open "https://"
+    fi
+
+    echo "No browser launcher found" >&2
+    exit 1
+}
+
 parse_config_flag() {
     if [[ $# -lt 2 ]]; then
         echo "Missing path after $1" >&2
@@ -694,6 +742,28 @@ case "$command_name" in
         done
         resolve_config_dir
         run_runtime_script "$config_dir" "scripts/launch-terminal.sh" "$@"
+        ;;
+    browser)
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                -c|--config)
+                    parse_config_flag "$@"
+                    shift 2
+                    ;;
+                --)
+                    shift
+                    break
+                    ;;
+                -h|--help)
+                    echo "Usage: inir browser [-c PATH] [url]" >&2
+                    exit 0
+                    ;;
+                *)
+                    break
+                    ;;
+            esac
+        done
+        launch_configured_browser "$@"
         ;;
     close-window)
         while [[ $# -gt 0 ]]; do

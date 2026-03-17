@@ -23,7 +23,7 @@ binds {
     Mod+T { spawn "inir" "terminal"; }
     Mod+Return { spawn "inir" "terminal"; }
     Super+E { spawn "nautilus"; }
-    Super+W { spawn "bash" "-c" "xdg-open https://"; }
+    Super+W { spawn "inir" "browser"; }
 
     Mod+Q repeat=false { spawn "inir" "close-window"; }
     Mod+D { maximize-column; }

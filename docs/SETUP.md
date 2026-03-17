@@ -159,6 +159,38 @@ When the installer detects an older unified Niri config, the required migration 
 - `config.d/10-80-*.kdl` standard sections
 - `config.d/90-user-extra.kdl` for preserved non-standard top-level content
 
+### Modular Niri config at a glance
+
+For new installs and migrated setups, `~/.config/niri/config.kdl` becomes a small include root and the real sections live in `config.d/`:
+
+- `10-input-and-cursor.kdl`
+  - keyboard, mouse, touchpad, cursor basics
+- `20-layout-and-overview.kdl`
+  - column layout, overview-related compositor behavior
+- `30-window-rules.kdl`
+  - per-app window rules and matching
+- `40-environment.kdl`
+  - environment variables exported into the session
+- `50-startup.kdl`
+  - startup programs and session bootstrap
+- `60-animations.kdl`
+  - compositor animation tuning
+- `70-binds.kdl`
+  - keybinds and launcher shortcuts
+- `80-layer-rules.kdl`
+  - layer-shell and overlay rules
+- `90-user-extra.kdl`
+  - preserved custom blocks that do not map to the standard split
+
+If you want to change which apps iNiR launches, edit `~/.config/illogical-impulse/config.json` instead of hardcoding new executables into the distributed binds:
+
+- `apps.terminal`
+  - used by `inir terminal`
+- `apps.browser`
+  - used by `inir browser` and the default `Super+W` bind
+- `sidebar.quickLaunch`
+  - custom quick-launch entries shown by the shell UI
+
 ## My Changes
 
 ```bash
@@ -194,6 +226,8 @@ Useful when you want to see what you've changed or restore defaults after custom
 | `inir run` | Launch iNiR from the active runtime |
 | `inir restart` | Restart the active runtime |
 | `inir settings` | Open settings via IPC |
+| `inir terminal` | Launch the configured terminal from `apps.terminal` |
+| `inir browser` | Launch the configured browser from `apps.browser` |
 | `inir doctor` | Wrapper around `./setup doctor` |
 | `inir logs` | Show recent runtime logs |
 | `inir repair` | Doctor + restart + filtered log check |

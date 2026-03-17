@@ -275,6 +275,12 @@ Singleton {
         fetcher.running = true;
     }
 
+    function hasRunningRequests(): bool {
+        return gpsLocator.running || ipLocator.running || fallbackLocator.running
+            || forwardGeocoder.running || reverseGeocoder.running
+            || fetcher.running || openMeteoFetcher.running;
+    }
+
     function getData(): void {
         if (root.location.valid) {
             fetchWeather();
@@ -286,8 +292,17 @@ Singleton {
     // Force refresh (useful for settings UI "refresh now" button)
     function forceRefresh(): void {
         console.info("[Weather] Force refresh requested");
+        root._forceRefreshPending = false;
         root.location = { valid: false, lat: 0, lon: 0, name: "" };
         root._retryCount = 0;
+        root._emptyResponseCount = 0;
+        root._primaryFailCount = 0;
+        root._primaryFailUntil = 0;
+        if (root.hasRunningRequests()) {
+            root._forceRefreshPending = true;
+            pendingForceRefreshTimer.restart();
+            return;
+        }
         resolveLocation();
     }
 
@@ -297,6 +312,7 @@ Singleton {
     // Track consecutive primary provider failures to skip it after repeated timeouts
     property int _primaryFailCount: 0
     property double _primaryFailUntil: 0  // timestamp (ms) until which primary is skipped
+    property bool _forceRefreshPending: false
     Timer {
         id: retryTimer
         // Exponential backoff: 5s, 10s, 20s, 40s, 80s
@@ -313,6 +329,23 @@ Singleton {
                     root.fetchWeather();
                 }
             }
+        }
+    }
+
+    Timer {
+        id: pendingForceRefreshTimer
+        interval: 350
+        repeat: true
+        onTriggered: {
+            if (!root._forceRefreshPending) {
+                pendingForceRefreshTimer.stop();
+                return;
+            }
+            if (root.hasRunningRequests())
+                return;
+            root._forceRefreshPending = false;
+            pendingForceRefreshTimer.stop();
+            root.resolveLocation();
         }
     }
 

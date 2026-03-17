@@ -243,9 +243,13 @@ ContentPage {
                 buttonIcon: "palette"
                 text: Translation.tr("Colors only mode")
                 checked: Config.options?.appearance?.wallpaperTheming?.colorsOnlyMode ?? false
-                onCheckedChanged: Config.setNestedValue("appearance.wallpaperTheming.colorsOnlyMode", checked)
+                onCheckedChanged: {
+                    Config.setNestedValue("appearance.wallpaperTheming.colorsOnlyMode", checked)
+                    if (!checked)
+                        Config.setNestedValue("appearance.wallpaperTheming.previewSourcePath", "")
+                }
                 StyledToolTip {
-                    text: Translation.tr("Click thumbnails to apply only colors, without changing wallpaper")
+                    text: Translation.tr("Use any thumbnail as the theme source while keeping the current wallpaper")
                 }
             }
 
@@ -384,6 +388,8 @@ ContentPage {
                             anchors.fill: parent
                             anchors.margins: Appearance.sizes.spacingSmall
                             model: Wallpapers.folderModel
+                            Component.onCompleted: Wallpapers.generateThumbnail("large")
+                            onModelChanged: Wallpapers.generateThumbnail("large")
 
                             // Responsive cell sizing - fill available width
                             property int minCellWidth: 110
@@ -420,6 +426,10 @@ ContentPage {
                                         if (delegateItem.fileIsDir) return false
                                         if (multiMonitorPanel.visible && multiMonitorPanel.backdropViewActive)
                                             return delegateItem.filePath === multiMonitorPanel.backdropPath
+                                        if (Config.options?.appearance?.wallpaperTheming?.colorsOnlyMode ?? false) {
+                                            const previewPath = Config.options?.appearance?.wallpaperTheming?.previewSourcePath ?? ""
+                                            return delegateItem.filePath === previewPath
+                                        }
                                         const multiMon = (Config.options?.background?.multiMonitor?.enable ?? false) && multiMonitorPanel.selectedMonitor
                                         const currentWallpaperPath = Config.options?.background?.wallpaperPath ?? ""
                                         return delegateItem.filePath === (multiMon

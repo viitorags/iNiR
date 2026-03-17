@@ -118,6 +118,11 @@ Singleton {
         }
     }
 
+    Process {
+        id: wpctlSetDefaultDevice
+        command: ["wpctl", "set-default", "0"]
+    }
+
     Timer {
         interval: 2000
         repeat: true
@@ -193,12 +198,29 @@ Singleton {
         root.sink.audio.volume = Math.max(0, currentVolume - step);
     }
 
+    function setDefaultNode(node, isSink: bool): void {
+        if (!node) return
+
+        if (isSink) {
+            Pipewire.preferredDefaultAudioSink = node;
+        } else {
+            Pipewire.preferredDefaultAudioSource = node;
+        }
+
+        const nodeId = Number(node.id ?? 0)
+        if (!Number.isFinite(nodeId) || nodeId <= 0 || wpctlSetDefaultDevice.running)
+            return
+
+        wpctlSetDefaultDevice.command = ["wpctl", "set-default", String(nodeId)]
+        wpctlSetDefaultDevice.running = true
+    }
+
     function setDefaultSink(node) {
-        Pipewire.preferredDefaultAudioSink = node;
+        root.setDefaultNode(node, true)
     }
 
     function setDefaultSource(node) {
-        Pipewire.preferredDefaultAudioSource = node;
+        root.setDefaultNode(node, false)
     }
 
     // Internals
