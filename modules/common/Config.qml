@@ -537,12 +537,20 @@ Singleton {
                     property real auroraOverlayOpacity: 0.38
                 }
                 property JsonObject parallax: JsonObject {
+                    property bool enable: true
+                    property string axis: "vertical"
                     property bool vertical: false
                     property bool autoVertical: false
                     property bool enableWorkspace: true
+                    property real workspaceShift: 1.0
                     property real workspaceZoom: 1.07 // Relative to your screen, not wallpaper size
+                    property real zoom: 1.07
                     property bool enableSidebar: true
+                    property real panelShift: 0.15
                     property real widgetsFactor: 1.2
+                    property real widgetDepth: 1.2
+                    property bool pauseDuringTransitions: true
+                    property int transitionSettleMs: 220
                 }
                 property JsonObject multiMonitor: JsonObject {
                     property bool enable: false
@@ -989,7 +997,7 @@ Singleton {
                     property string webSearch: "?"
                 }
                 property JsonObject imageSearch: JsonObject {
-                    property string imageSearchEngineBaseUrl: "https://lens.google.com/uploadbyurl?url="
+                    property string imageSearchEngineBaseUrl: "https://yandex.com/images/search?rpt=imageview&url="
                     property string fileUploadApiEndpoint: "https://0x0.st"
                     property string fileUploadApiFallback: "https://litterbox.catbox.moe/resources/internals/api.php"
                     property string fileUploadApiFallback2: "https://catbox.moe/user/api.php"
@@ -1347,7 +1355,7 @@ Singleton {
                         property int thumbnailBlurStrength: 70 // Blur strength for animated wallpapers (0-100)
                     }
                     property JsonObject backdrop: JsonObject {
-                        property bool enable: false
+                        property bool enable: true
                         property bool hideWallpaper: false
                         property bool useMainWallpaper: true
                         property string wallpaperPath: ""
@@ -1362,6 +1370,45 @@ Singleton {
                         property real vignetteIntensity: 0.5
                         property real vignetteRadius: 0.7
                     }
+                    property JsonObject parallax: JsonObject {
+                        property bool enable: false
+                        property string axis: "horizontal"
+                        property bool vertical: false
+                        property bool autoVertical: true
+                        property bool enableWorkspace: false
+                        property real workspaceShift: 1.0
+                        property real workspaceZoom: 1.05
+                        property real zoom: 1.05
+                        property bool enableSidebar: false
+                        property real panelShift: 0.12
+                        property real widgetsFactor: 1.0
+                        property real widgetDepth: 1.0
+                        property bool pauseDuringTransitions: true
+                        property int transitionSettleMs: 220
+                    }
+                    property JsonObject widgets: JsonObject {
+                        property JsonObject clock: JsonObject {
+                            property bool enable: false
+                            property string placementStrategy: "leastBusy"
+                            property int x: 100
+                            property int y: 100
+                            property int dim: 55
+                            property string fontFamily: "Segoe UI Variable Display"
+                            property string style: "hero"
+                            property string timeFormat: "system"
+                            property string dateStyle: "long"
+                            property string colorMode: "adaptive"
+                            property bool showDate: true
+                            property bool showSeconds: false
+                            property bool showShadow: true
+                            property bool showLockStatus: true
+                            property int timeScale: 100
+                            property int dateScale: 100
+                            property JsonObject digital: JsonObject {
+                                property bool animateChange: true
+                            }
+                        }
+                    }
                 }
                 property JsonObject bar: JsonObject {
                     property bool bottom: true
@@ -1370,6 +1417,16 @@ Singleton {
                     property bool tintTrayIcons: false
                     property int iconSize: 26
                     property int searchIconSize: 24
+                    property JsonObject desktopPeek: JsonObject {
+                        property bool hoverPeek: false
+                        property int hoverDelay: 500
+                    }
+                    property JsonObject notifications: JsonObject {
+                        property bool showUnreadCount: true
+                    }
+                }
+                property JsonObject notifications: JsonObject {
+                    property bool showUnreadCount: true
                 }
                 property JsonObject actionCenter: JsonObject {
                     property list<string> toggles: [ "network", "bluetooth", "easyEffects", "powerProfile", "idleInhibitor", "nightLight", "darkMode", "antiFlashbang", "cloudflareWarp", "mic", "musicRecognition", "notifications", "onScreenKeyboard", "gameMode", "screenSnip", "colorPicker" ]
@@ -1398,6 +1455,7 @@ Singleton {
                     property bool showSystem: true
                     property bool showMedia: true
                     property bool showQuickActions: true
+                    property list<string> quickActions: ["files", "terminal", "settings", "wallpaper", "screenshot", "screenRecord", "session"]
                     property bool weatherHideLocation: false // Privacy: hide city name
                 }
                 property JsonObject workspaceNames: JsonObject {

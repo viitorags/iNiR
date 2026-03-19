@@ -22,6 +22,7 @@ Singleton {
     readonly property var terminalAdjCfg: wallpaperThemingCfg?.terminalColorAdjustments ?? null
     readonly property string liveRegenSignature: JSON.stringify({
         theme: currentTheme,
+        themingWallpaperPath: Wallpapers.effectiveWallpaperPath ?? "",
         enableAppsAndShell: wallpaperThemingCfg?.enableAppsAndShell ?? true,
         enableTerminal: wallpaperThemingCfg?.enableTerminal ?? true,
         enableVesktop: wallpaperThemingCfg?.enableVesktop ?? true,

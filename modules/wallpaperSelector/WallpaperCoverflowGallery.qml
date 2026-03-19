@@ -86,6 +86,7 @@ Item {
     property int _wheelAccum: 0
     property real _focusPulse: 0
     property int _activeColorReloadToken: 0
+    property int _activePreviewReloadToken: 0
 
     readonly property string activePath: hasItems ? _filePath(currentIndex) : ""
     readonly property string activeName: hasItems ? _fileName(currentIndex) : ""
@@ -98,13 +99,14 @@ Item {
     readonly property string activePreviewSource: {
         if (!hasItems || activePath.length === 0 || activeIsDir)
             return ""
-        if (activeKind === "video") {
-            const thumbPath = Wallpapers.getExpectedThumbnailPath(activePath, _lastThumbnailSizeName)
-            return thumbPath.length > 0
-                ? (thumbPath.startsWith("file://") ? thumbPath : ("file://" + thumbPath))
-                : ""
-        }
-        return activePath.startsWith("file://") ? activePath : ("file://" + activePath)
+        const thumbPath = Wallpapers.getExpectedThumbnailPath(activePath, _lastThumbnailSizeName)
+        if (thumbPath.length === 0)
+            return ""
+        const thumbUrl = thumbPath.startsWith("file://") ? thumbPath : ("file://" + thumbPath)
+        return thumbUrl + (thumbUrl.indexOf("?") >= 0 ? "&" : "?")
+            + "hero=" + encodeURIComponent(activePath)
+            + "&index=" + currentIndex
+            + "&reload=" + _activePreviewReloadToken
     }
     readonly property string activeColorSource: {
         if (!hasItems || activePath.length === 0 || activeIsDir)
@@ -193,6 +195,32 @@ Item {
             sizeName = "x-large"
         _lastThumbnailSizeName = sizeName
         Wallpapers.generateThumbnail(_lastThumbnailSizeName)
+        _prefetchAroundIndex(currentIndex)
+    }
+
+    function _prefetchAroundIndex(centerIndex) {
+        if (!hasItems)
+            return
+        const radius = previewMode ? 4 : 8
+        for (let offset = 0; offset <= radius; offset++) {
+            const leftIndex = centerIndex - offset
+            const rightIndex = offset === 0 ? -1 : centerIndex + offset
+            if (leftIndex >= 0)
+                _prefetchIndex(leftIndex)
+            if (rightIndex >= 0 && rightIndex < totalCount)
+                _prefetchIndex(rightIndex)
+        }
+    }
+
+    function _prefetchIndex(index) {
+        if (index < 0 || index >= totalCount)
+            return
+        if (_fileIsDir(index))
+            return
+        const filePath = _filePath(index)
+        if (!filePath || filePath.length === 0)
+            return
+        Wallpapers.ensureThumbnailForPath(filePath, _lastThumbnailSizeName)
     }
 
 
@@ -224,6 +252,7 @@ Item {
         if (bounded === currentIndex) return
         currentIndex = bounded
         showKeyboardGuide = false
+        _prefetchAroundIndex(currentIndex)
         if (Appearance.animationsEnabled)
             focusPulseAnim.restart()
     }
@@ -311,6 +340,8 @@ Item {
         updateThumbnails()
     }
 
+    onCurrentIndexChanged: _prefetchAroundIndex(currentIndex)
+
     onCurrentWallpaperPathChanged: {
         _initialized = false
         _syncToCurrentWallpaper(true)
@@ -327,8 +358,10 @@ Item {
             thumbnailDebounce.restart()
         }
         function onThumbnailGeneratedFile(filePath) {
-            if (FileUtils.trimFileProtocol(String(filePath ?? "")) === FileUtils.trimFileProtocol(root.activePath))
+            if (FileUtils.trimFileProtocol(String(filePath ?? "")) === FileUtils.trimFileProtocol(root.activePath)) {
+                root._activePreviewReloadToken += 1
                 root._activeColorReloadToken += 1
+            }
         }
     }
 
@@ -847,6 +880,8 @@ Item {
                         clip: true
                         sourceSize.width: Math.round(heroCard.width * root._dpr * 1.5)
                         sourceSize.height: Math.round(heroCard.height * root._dpr * 1.5)
+                        property string requestedSource: ""
+                        onStatusChanged: heroClipContent._promoteReadySlot(heroA)
                         Behavior on opacity {
                             enabled: Appearance.animationsEnabled
                             NumberAnimation { duration: Appearance.calcEffectiveDuration(280); easing.type: Easing.OutCubic }
@@ -865,6 +900,8 @@ Item {
                         clip: true
                         sourceSize.width: Math.round(heroCard.width * root._dpr * 1.5)
                         sourceSize.height: Math.round(heroCard.height * root._dpr * 1.5)
+                        property string requestedSource: ""
+                        onStatusChanged: heroClipContent._promoteReadySlot(heroB)
                         Behavior on opacity {
                             enabled: Appearance.animationsEnabled
                             NumberAnimation { duration: Appearance.calcEffectiveDuration(280); easing.type: Easing.OutCubic }
@@ -873,23 +910,43 @@ Item {
 
                     // Crossfade controller
                     property bool _heroSlotA: true
+                    property string _heroPendingSource: ""
                     readonly property bool _heroShouldShow: root.hasItems && !root.activeIsDir && root.activePreviewSource.length > 0 && Images.isValidMediaByName(root.activeName)
 
                     function _crossfadeTo(src) {
                         if (!_heroShouldShow) {
+                            _heroPendingSource = ""
                             heroA.opacity = 0; heroB.opacity = 0
                             return
                         }
-                        if (_heroSlotA) {
-                            heroA.source = src
+                        _heroPendingSource = src
+                        const target = _heroSlotA ? heroB : heroA
+                        if (target.requestedSource === src && target.status === Image.Ready) {
+                            _showSlot(target)
+                            return
+                        }
+                        target.requestedSource = src
+                        target.source = src
+                    }
+
+                    function _showSlot(target) {
+                        if (target === heroA) {
                             heroA.opacity = 1.0
                             heroB.opacity = 0.0
+                            _heroSlotA = true
                         } else {
-                            heroB.source = src
                             heroB.opacity = 1.0
                             heroA.opacity = 0.0
+                            _heroSlotA = false
                         }
-                        _heroSlotA = !_heroSlotA
+                    }
+
+                    function _promoteReadySlot(target) {
+                        if (target.status !== Image.Ready)
+                            return
+                        if (target.requestedSource !== _heroPendingSource)
+                            return
+                        _showSlot(target)
                     }
 
                     Connections {

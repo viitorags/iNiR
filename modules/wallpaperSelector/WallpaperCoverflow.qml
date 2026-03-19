@@ -65,7 +65,10 @@ Scope {
 
         Wallpapers.applySelectionTarget(normalizedPath, target, useDarkMode, root.selectedMonitor)
 
+        Config.setNestedValue("wallpaperSelector.selectionTarget", "main")
+        Config.setNestedValue("wallpaperSelector.targetMonitor", "")
         GlobalStates.wallpaperSelectionTarget = "main"
+        GlobalStates.wallpaperSelectorTargetMonitor = ""
         GlobalStates.coverflowSelectorOpen = false
     }
 

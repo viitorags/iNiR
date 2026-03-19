@@ -106,8 +106,10 @@ MouseArea {
             let target = (configTarget && configTarget !== "main") ? configTarget : GlobalStates.wallpaperSelectionTarget;
             
             Wallpapers.applySelectionTarget(normalizedPath, target, root.useDarkMode, root.selectedMonitor);
-            // Reset GlobalStates only (Config resets on its own via defaults)
+            Config.setNestedValue("wallpaperSelector.selectionTarget", "main")
+            Config.setNestedValue("wallpaperSelector.targetMonitor", "")
             GlobalStates.wallpaperSelectionTarget = "main";
+            GlobalStates.wallpaperSelectorTargetMonitor = "";
             filterField.text = "";
             GlobalStates.wallpaperSelectorOpen = false;
         }

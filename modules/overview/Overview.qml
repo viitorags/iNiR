@@ -304,7 +304,9 @@ Scope {
                 Loader {
                     id: overviewLoader
                     anchors.horizontalCenter: parent.horizontalCenter
-                    active: GlobalStates.overviewOpen && (Config?.options.overview.enable ?? true)
+                    readonly property bool dashboardMode: Config.options?.overview?.dashboard?.enable ?? false
+                    active: GlobalStates.overviewOpen && !dashboardMode && (Config.options?.overview?.enable ?? true)
+                    visible: active
                     sourceComponent: CompositorService.isNiri ? niriComponent : hyprComponent
                 }
 
@@ -328,7 +330,7 @@ Scope {
                 OverviewDashboard {
                     id: dashboardPanel
                     anchors.horizontalCenter: parent.horizontalCenter
-                    visible: (root.searchingText == "") && (Config.options?.overview?.dashboard?.enable ?? true)
+                    visible: (root.searchingText == "") && (Config.options?.overview?.dashboard?.enable ?? false)
                     opacity: GlobalStates.overviewOpen ? 1 : 0
 
                     Behavior on opacity {

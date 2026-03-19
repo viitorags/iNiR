@@ -7,6 +7,7 @@ import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
+import "root:modules/common/functions/parallax.js" as ParallaxMath
 
 ContentPage {
     id: root
@@ -14,6 +15,30 @@ ContentPage {
     settingsPageName: Translation.tr("Background")
 
     property bool isIiActive: Config.options?.panelFamily !== "waffle"
+    readonly property var iiParallax: Config.options?.background?.parallax ?? {}
+    readonly property string iiParallaxPreset: ParallaxMath.detectPreset(
+        iiParallax.zoom ?? iiParallax.workspaceZoom ?? 1.07,
+        iiParallax.workspaceShift ?? 1,
+        iiParallax.panelShift ?? iiParallax.sidebarShift ?? 0.15,
+        iiParallax.widgetDepth ?? iiParallax.widgetsFactor ?? 1.2
+    )
+
+    function setIiParallaxAxis(value: string): void {
+        Config.setNestedValue("background.parallax.axis", value)
+        Config.setNestedValue("background.parallax.autoVertical", value === "auto")
+        Config.setNestedValue("background.parallax.vertical", value === "vertical")
+    }
+
+    function applyIiParallaxPreset(presetId: string): void {
+        const preset = ParallaxMath.preset(presetId)
+        Config.setNestedValue("background.parallax.enable", true)
+        Config.setNestedValue("background.parallax.zoom", preset.zoom)
+        Config.setNestedValue("background.parallax.workspaceZoom", preset.zoom)
+        Config.setNestedValue("background.parallax.workspaceShift", preset.workspaceShift)
+        Config.setNestedValue("background.parallax.panelShift", preset.panelShift)
+        Config.setNestedValue("background.parallax.widgetDepth", preset.widgetDepth)
+        Config.setNestedValue("background.parallax.widgetsFactor", preset.widgetDepth)
+    }
 
     SettingsCardSection {
         visible: !root.isIiActive
@@ -37,21 +62,52 @@ ContentPage {
         expanded: false
         icon: "sync_alt"
         title: Translation.tr("Parallax")
-        // NOTE: When parallax is active (workspace or sidebar enabled), the shell renders
-        // the wallpaper internally instead of letting awww handle it. This means awww
-        // wallpaper transitions are replaced by a fade-in reveal after the transition
-        // completes at the compositor level. Blur and dim effects still work normally.
 
         SettingsGroup {
             SettingsSwitch {
-                buttonIcon: "unfold_more_double"
-                text: Translation.tr("Vertical")
-                checked: Config.options.background.parallax.vertical
-                onCheckedChanged: {
-                    Config.setNestedValue("background.parallax.vertical", checked);
-                }
+                buttonIcon: "image"
+                text: Translation.tr("Enable parallax")
+                checked: root.iiParallax.enable ?? ((root.iiParallax.enableWorkspace ?? false) || (root.iiParallax.enableSidebar ?? false))
+                onCheckedChanged: Config.setNestedValue("background.parallax.enable", checked)
                 StyledToolTip {
-                    text: Translation.tr("Enable vertical parallax movement based on mouse position")
+                    text: Translation.tr("Move the wallpaper and background widgets with workspaces and panels")
+                }
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                text: Translation.tr("When parallax is active, ii renders the wallpaper internally so workspace motion, widget depth and wallpaper transitions stay synchronized.")
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.small
+                wrapMode: Text.WordWrap
+            }
+
+            ContentSubsection {
+                title: Translation.tr("Motion profile")
+
+                ConfigSelectionArray {
+                    currentValue: root.iiParallaxPreset === "custom" ? null : root.iiParallaxPreset
+                    options: [
+                        { displayName: Translation.tr("Subtle"), icon: "bedtime", value: "subtle" },
+                        { displayName: Translation.tr("Balanced"), icon: "tune", value: "balanced" },
+                        { displayName: Translation.tr("Immersive"), icon: "movie", value: "immersive" }
+                    ]
+                    onSelected: newValue => root.applyIiParallaxPreset(newValue)
+                }
+            }
+
+            ContentSubsection {
+                title: Translation.tr("Axis")
+
+                ConfigSelectionArray {
+                    currentValue: root.iiParallax.axis
+                        ?? ((root.iiParallax.autoVertical ?? false) ? "auto" : ((root.iiParallax.vertical ?? false) ? "vertical" : "horizontal"))
+                    options: [
+                        { displayName: Translation.tr("Horizontal"), icon: "east", value: "horizontal" },
+                        { displayName: Translation.tr("Vertical"), icon: "north", value: "vertical" },
+                        { displayName: Translation.tr("Auto"), icon: "sync_alt", value: "auto" }
+                    ]
+                    onSelected: newValue => root.setIiParallaxAxis(newValue)
                 }
             }
 
@@ -59,40 +115,95 @@ ContentPage {
                 uniform: true
                 SettingsSwitch {
                     buttonIcon: "counter_1"
-                    text: Translation.tr("Depends on workspace")
-                    checked: Config.options.background.parallax.enableWorkspace
-                    onCheckedChanged: {
-                        Config.setNestedValue("background.parallax.enableWorkspace", checked);
-                    }
+                    text: Translation.tr("Follow workspace")
+                    checked: root.iiParallax.enableWorkspace ?? false
+                    enabled: root.iiParallax.enable ?? true
+                    onCheckedChanged: Config.setNestedValue("background.parallax.enableWorkspace", checked)
                     StyledToolTip {
-                        text: Translation.tr("Shift wallpaper based on current workspace position")
+                        text: Translation.tr("Use the current workspace range to shift the wallpaper")
                     }
                 }
                 SettingsSwitch {
                     buttonIcon: "side_navigation"
-                    text: Translation.tr("Depends on sidebars")
-                    checked: Config.options.background.parallax.enableSidebar
-                    onCheckedChanged: {
-                        Config.setNestedValue("background.parallax.enableSidebar", checked);
-                    }
+                    text: Translation.tr("Follow sidebars")
+                    checked: root.iiParallax.enableSidebar ?? false
+                    enabled: root.iiParallax.enable ?? true
+                    onCheckedChanged: Config.setNestedValue("background.parallax.enableSidebar", checked)
                     StyledToolTip {
-                        text: Translation.tr("Shift wallpaper when sidebars are open")
+                        text: Translation.tr("Add lateral offset when left or right sidebar is open")
                     }
                 }
             }
+
             ConfigSpinBox {
                 icon: "loupe"
-                text: Translation.tr("Preferred wallpaper zoom (%)")
-                value: Config.options.background.parallax.workspaceZoom * 100
+                text: Translation.tr("Wallpaper zoom (%)")
+                value: Math.round((root.iiParallax.zoom ?? root.iiParallax.workspaceZoom ?? 1.07) * 100)
                 from: 100
-                to: 150
+                to: 140
                 stepSize: 1
                 onValueChanged: {
-                    Config.setNestedValue("background.parallax.workspaceZoom", value / 100);
+                    Config.setNestedValue("background.parallax.zoom", value / 100)
+                    Config.setNestedValue("background.parallax.workspaceZoom", value / 100)
                 }
                 StyledToolTip {
-                    text: Translation.tr("How much to zoom the wallpaper for parallax effect")
+                    text: Translation.tr("Extra wallpaper scale reserved for parallax movement")
                 }
+            }
+
+            ConfigSpinBox {
+                icon: "north"
+                text: Translation.tr("Workspace travel (%)")
+                value: Math.round((root.iiParallax.workspaceShift ?? 1) * 100)
+                from: 0
+                to: 150
+                stepSize: 5
+                enabled: (root.iiParallax.enable ?? true) && (root.iiParallax.enableWorkspace ?? false)
+                onValueChanged: Config.setNestedValue("background.parallax.workspaceShift", value / 100)
+            }
+
+            ConfigSpinBox {
+                icon: "left_panel_open"
+                text: Translation.tr("Sidebar travel (%)")
+                value: Math.round((root.iiParallax.panelShift ?? root.iiParallax.sidebarShift ?? 0.15) * 100)
+                from: 0
+                to: 30
+                stepSize: 1
+                enabled: (root.iiParallax.enable ?? true) && (root.iiParallax.enableSidebar ?? false)
+                onValueChanged: Config.setNestedValue("background.parallax.panelShift", value / 100)
+            }
+
+            ConfigSpinBox {
+                icon: "layers"
+                text: Translation.tr("Widget depth (%)")
+                value: Math.round((root.iiParallax.widgetDepth ?? root.iiParallax.widgetsFactor ?? 1.2) * 100)
+                from: 50
+                to: 180
+                stepSize: 5
+                enabled: root.iiParallax.enable ?? true
+                onValueChanged: {
+                    Config.setNestedValue("background.parallax.widgetDepth", value / 100)
+                    Config.setNestedValue("background.parallax.widgetsFactor", value / 100)
+                }
+            }
+
+            SettingsSwitch {
+                buttonIcon: "transition_fade"
+                text: Translation.tr("Pause during wallpaper transitions")
+                checked: root.iiParallax.pauseDuringTransitions ?? true
+                enabled: root.iiParallax.enable ?? true
+                onCheckedChanged: Config.setNestedValue("background.parallax.pauseDuringTransitions", checked)
+            }
+
+            ConfigSpinBox {
+                icon: "timer"
+                text: Translation.tr("Transition settle (ms)")
+                value: root.iiParallax.transitionSettleMs ?? 220
+                from: 0
+                to: 1200
+                stepSize: 20
+                enabled: (root.iiParallax.enable ?? true) && (root.iiParallax.pauseDuringTransitions ?? true)
+                onValueChanged: Config.setNestedValue("background.parallax.transitionSettleMs", value)
             }
         }
     }
@@ -1660,7 +1771,7 @@ ContentPage {
     SettingsCardSection {
         visible: root.isIiActive
         expanded: false
-        icon: "clock_loader_40"
+        icon: "pulse"
         title: Translation.tr("Widget: Clock")
 
         SettingsGroup {
@@ -1718,7 +1829,7 @@ ContentPage {
                     options: [
                         {
                             displayName: Translation.tr("Digital"),
-                            icon: "timer_10",
+                            icon: "pulse",
                             value: "digital"
                         },
                         {
@@ -1841,7 +1952,7 @@ ContentPage {
 
                     SettingsSwitch {
                         enabled: Config.options.background.widgets.clock.style === "cookie" && Config.options.background.widgets.clock.cookie.dialNumberStyle !== "numbers"
-                        buttonIcon: "timer_10"
+                        buttonIcon: "pulse"
                         text: Translation.tr("Digits in the middle")
                         checked: Config.options.background.widgets.clock.cookie.timeIndicators
                         onEnabledChanged: {

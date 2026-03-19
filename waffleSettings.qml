@@ -19,6 +19,7 @@ ApplicationWindow {
     id: root
     
     property bool uiReady: Config.ready
+    property string pendingStartSection: ""
     
     property var pages: [
         {
@@ -78,6 +79,20 @@ ApplicationWindow {
     visible: true
     onClosing: Qt.quit()
     title: "Settings — iNiR"
+
+    function tryOpenPendingSection(): void {
+        if (!root.pendingStartSection || !root.uiReady)
+            return
+
+        const targetLabel = root.pendingStartSection
+        root.pendingStartSection = ""
+        Qt.callLater(() => {
+            settingsContent.openSearchResult({
+                pageIndex: root.currentPage,
+                targetLabel: targetLabel
+            })
+        })
+    }
     
     Component.onCompleted: {
         Config.readWriteDelay = 0
@@ -85,17 +100,17 @@ ApplicationWindow {
         if (startPage) root.currentPage = parseInt(startPage);
 
         const startSection = Quickshell.env("QS_SETTINGS_SECTION");
-        if (startSection) {
-            root.pendingSpotlightSection = startSection;
-            root.pendingSpotlightPageIndex = root.currentPage;
-            root.trySpotlight();
-        }
+        if (startSection)
+            root.pendingStartSection = startSection;
+
+        root.tryOpenPendingSection()
     }
     
     Connections {
         target: Config
         function onReadyChanged() {
             if (Config.ready) ThemeService.applyCurrentTheme()
+            root.tryOpenPendingSection()
         }
     }
     
@@ -120,6 +135,7 @@ ApplicationWindow {
     
     // Main content
     WSettingsContent {
+        id: settingsContent
         anchors.fill: parent
         visible: root.uiReady
         opacity: visible ? 1 : 0
@@ -128,6 +144,7 @@ ApplicationWindow {
         currentPage: root.currentPage
         onCurrentPageChanged: root.currentPage = currentPage
         onCloseRequested: root.close()
+        Component.onCompleted: root.tryOpenPendingSection()
         
         Behavior on opacity {
             NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
