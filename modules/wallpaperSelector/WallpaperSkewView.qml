@@ -347,7 +347,7 @@ Item {
         highlightRangeMode: ListView.StrictlyEnforceRange
         preferredHighlightBegin: (width / 2) - (root.cardWidth / 2)
         preferredHighlightEnd: (width / 2) + (root.cardWidth / 2)
-        highlightMoveDuration: root._snapDone ? 300 : 0
+        highlightMoveDuration: root._snapDone ? Appearance.calcEffectiveDuration(300) : 0
         highlightFollowsCurrentItem: true
 
         boundsBehavior: Flickable.StopAtBounds
@@ -395,8 +395,14 @@ Item {
                 scale: delegateRoot.isCurrent ? 1.15 : 0.95
                 opacity: delegateRoot.isCurrent ? 1.0 : 0.6
 
-                Behavior on scale { NumberAnimation { duration: 500; easing.type: Easing.OutBack } }
-                Behavior on opacity { NumberAnimation { duration: 500 } }
+                Behavior on scale {
+                    enabled: Appearance.animationsEnabled
+                    NumberAnimation { duration: Appearance.animation.elementMoveEnter.duration; easing.type: Easing.OutBack }
+                }
+                Behavior on opacity {
+                    enabled: Appearance.animationsEnabled
+                    NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
+                }
 
                 // Parallelogram skew
                 transform: Matrix4x4 {
@@ -679,6 +685,7 @@ Item {
             onClicked: {
                 root.showKeyboardGuide = false
                 root.useDarkMode = !root.useDarkMode
+                MaterialThemeLoader.setDarkMode(root.useDarkMode)
             }
             text: root.useDarkMode ? "dark_mode" : "light_mode"
             StyledToolTip { text: Translation.tr("Toggle light/dark mode") }

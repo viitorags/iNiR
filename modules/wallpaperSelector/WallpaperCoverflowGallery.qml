@@ -1212,7 +1212,7 @@ Item {
             highlightRangeMode: ListView.StrictlyEnforceRange
             preferredHighlightBegin: (width / 2) - (_delegateWidth / 2)
             preferredHighlightEnd: (width / 2) + (_delegateWidth / 2)
-            highlightMoveDuration: root._initialized ? 300 : 0
+            highlightMoveDuration: root._initialized ? Appearance.calcEffectiveDuration(300) : 0
             highlightFollowsCurrentItem: true
 
             onCurrentIndexChanged: {
@@ -1236,7 +1236,7 @@ Item {
                 height: filmstripView.height
                 opacity: isCurrent ? 1.0 : absDist === 1 ? 0.78 : Math.max(0.42, 0.78 - (absDist - 1) * 0.09)
 
-                Behavior on opacity { NumberAnimation { duration: 400 } }
+                Behavior on opacity { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
 
                 Item {
                     id: thumbCard
@@ -1456,6 +1456,7 @@ Item {
             onClicked: {
                 root.showKeyboardGuide = false
                 root.useDarkMode = !root.useDarkMode
+                MaterialThemeLoader.setDarkMode(root.useDarkMode)
             }
             text: root.useDarkMode ? "dark_mode" : "light_mode"
             StyledToolTip { text: Translation.tr("Toggle light/dark mode") }

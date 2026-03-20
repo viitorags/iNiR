@@ -1319,13 +1319,14 @@ Item {
             onClicked: {
                 root.showKeyboardGuide = false
                 root.useDarkMode = !root.useDarkMode
+                MaterialThemeLoader.setDarkMode(root.useDarkMode)
             }
             text: root.useDarkMode ? "dark_mode" : "light_mode"
             StyledToolTip { text: Translation.tr("Toggle light/dark mode") }
         }
         IconToolbarButton {
             implicitWidth: height
-            onClicked: Wallpapers.randomFromCurrentFolder()
+            onClicked: Wallpapers.randomFromCurrentFolder(root.useDarkMode)
             text: "shuffle"
             StyledToolTip { text: Translation.tr("Random wallpaper") }
         }

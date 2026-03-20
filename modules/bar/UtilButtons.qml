@@ -263,11 +263,7 @@ Item {
             sourceComponent: CircleUtilButton {
                 Layout.alignment: Qt.AlignVCenter
                 onClicked: event => {
-                    if (Appearance.m3colors.darkmode) {
-                        Quickshell.execDetached([Directories.wallpaperSwitchScriptPath, "--mode", "light", "--noswitch"]);
-                    } else {
-                        Quickshell.execDetached([Directories.wallpaperSwitchScriptPath, "--mode", "dark", "--noswitch"]);
-                    }
+                    MaterialThemeLoader.setDarkMode(!Appearance.m3colors.darkmode)
                 }
                 MaterialSymbol {
                     horizontalAlignment: Qt.AlignHCenter

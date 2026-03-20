@@ -27,6 +27,24 @@ Singleton {
         themeFileView.reload()
     }
 
+    // Toggle dark/light mode by running switchwall.sh with --mode and scheduling a reload.
+    // Use this instead of Quickshell.execDetached so we can force-read colors.json on completion.
+    function setDarkMode(dark: bool): void {
+        darkModeProc.command = [
+            "/usr/bin/bash",
+            Directories.wallpaperSwitchScriptPath,
+            "--mode", dark ? "dark" : "light",
+            "--noswitch"
+        ]
+        darkModeProc.running = true
+    }
+
+    Process {
+        id: darkModeProc
+        running: false
+        onExited: root.scheduleReload()
+    }
+
     function applyColors(fileContent) {
         // Only apply wallpaper colors when auto theme is selected
         // When a manual theme is active, ThemePresets handles the colors
@@ -65,6 +83,34 @@ Singleton {
 
     function resetFilePathNextTime() {
         resetFilePathNextWallpaperChange.enabled = !!(Config.options?.background)
+    }
+
+    // Called after dark/light mode toggle scripts to force a re-read of colors.json,
+    // since external file watchers may miss rapid rewrites on some systems.
+    function scheduleReload() {
+        reloadPollTimer.remainingAttempts = 6
+        reloadPollTimer.restart()
+    }
+
+    Timer {
+        id: reloadPollTimer
+        interval: 800
+        repeat: true
+        running: false
+        property int remainingAttempts: 0
+        onTriggered: {
+            if (remainingAttempts <= 0) {
+                running = false
+                return
+            }
+            remainingAttempts--
+            themeFileView.reload()
+            const content = themeFileView.text()
+            if (content && content.trim().length > 0) {
+                root.applyColors(content)
+                if (remainingAttempts <= 0) running = false
+            }
+        }
     }
 
     Connections {

@@ -496,7 +496,7 @@ MouseArea {
                         IconToolbarButton {
                             implicitWidth: height
                             onClicked: {
-                                Wallpapers.randomFromCurrentFolder();
+                                Wallpapers.randomFromCurrentFolder(root.useDarkMode);
                             }
                             text: "ifl"
                             StyledToolTip {
@@ -506,7 +506,10 @@ MouseArea {
 
                         IconToolbarButton {
                             implicitWidth: height
-                            onClicked: root.useDarkMode = !root.useDarkMode
+                            onClicked: {
+                                root.useDarkMode = !root.useDarkMode
+                                MaterialThemeLoader.setDarkMode(root.useDarkMode)
+                            }
                             text: root.useDarkMode ? "dark_mode" : "light_mode"
                             StyledToolTip {
                                 text: Translation.tr("Click to toggle light/dark mode\n(applied when wallpaper is chosen)")
