@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
+import Quickshell
 import Quickshell.Io
 import qs.services
 import qs.modules.common
@@ -271,6 +272,53 @@ ContentPage {
             Config.setNestedValue("screenRecord.preset", "slow")
             Config.setNestedValue("screenRecord.crf", 14)
             break
+        }
+    }
+
+    SettingsCardSection {
+        expanded: false
+        icon: "aspect_ratio"
+        title: Translation.tr("Display scaling")
+
+        SettingsGroup {
+            ConfigRow {
+                uniform: true
+                ConfigSpinBox {
+                    icon: "zoom_in"
+                    text: Translation.tr("UI scale (%)")
+                    value: Math.round((Config.options?.appearance?.typography?.sizeScale ?? 1.0) * 100)
+                    from: 50
+                    to: 200
+                    stepSize: 5
+                    onValueChanged: {
+                        Config.setNestedValue("appearance.typography.sizeScale", value / 100)
+                    }
+                    StyledToolTip {
+                        text: Translation.tr("Scale fonts and spacing throughout the shell. Takes effect immediately.")
+                    }
+                }
+            }
+
+            StyledText {
+                Layout.leftMargin: 16
+                text: Translation.tr("Current: %1%. Takes effect immediately.").arg(
+                    Math.round((Config.options?.appearance?.typography?.sizeScale ?? 1.0) * 100))
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                color: Appearance.colors.colSubtext
+            }
+
+            RowLayout {
+                Layout.topMargin: 4
+                visible: Math.abs((Config.options?.appearance?.typography?.sizeScale ?? 1.0) - 1.0) > 0.01
+
+                RippleButtonWithIcon {
+                    materialIcon: "zoom_out"
+                    mainText: Translation.tr("Reset to 100%")
+                    onClicked: {
+                        Config.setNestedValue("appearance.typography.sizeScale", 1.0)
+                    }
+                }
+            }
         }
     }
 

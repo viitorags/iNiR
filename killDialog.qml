@@ -2,9 +2,7 @@
 //@ pragma Env QS_NO_RELOAD_POPUP=1
 //@ pragma Env QT_QUICK_CONTROLS_STYLE=Basic
 //@ pragma Env QT_QUICK_FLICKABLE_WHEEL_DECELERATION=10000
-
-// Adjust this to make the app smaller or larger
-//@ pragma Env QT_SCALE_FACTOR=1
+// QT_SCALE_FACTOR is set by the launcher from config (appearance.shellScale)
 
 import QtQuick
 import QtQuick.Controls

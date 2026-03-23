@@ -99,6 +99,14 @@ canonicalize_path() {
     fi
 }
 
+apply_shell_scale() {
+    # Shell scaling is now handled entirely in QML via appearance.typography.sizeScale
+    # (live, no restart required). QT_SCALE_FACTOR must always be 1 to avoid geometry
+    # bugs where the compositor surface is larger than the Qt-rendered content area,
+    # which causes wallpaper/blur layers to appear smaller than the screen.
+    export QT_SCALE_FACTOR=1
+}
+
 resolve_config_dir() {
     if [[ -n "$config_dir" ]]; then
         if [[ ! -f "$config_dir/shell.qml" ]]; then
@@ -159,10 +167,12 @@ wait_for_stop() {
 
 start_background() {
     local dir="$1"
+    local scale="${QT_SCALE_FACTOR:-1}"
     nohup /usr/bin/env bash -c '
         set -euo pipefail
         qs_bin="$1"
         config_dir="$2"
+        export QT_SCALE_FACTOR="$3"
         while true; do
             set +e
             "$qs_bin" -n -p "$config_dir"
@@ -172,7 +182,7 @@ start_background() {
             echo "[inir] quickshell exited with code $exit_code, restarting in 1s..." >&2
             sleep 1
         done
-    ' _ "$qs_bin" "$dir" >/dev/null 2>&1 &
+    ' _ "$qs_bin" "$dir" "$scale" >/dev/null 2>&1 &
 }
 
 kill_shell() {
@@ -218,6 +228,7 @@ open_settings() {
     local dir="$1"
 
     if ! has_instances "$dir"; then
+        apply_shell_scale
         start_background "$dir"
         if ! wait_for_start "$dir"; then
             echo "Timed out waiting for iNiR to start" >&2
@@ -349,6 +360,7 @@ run_repair() {
 
     kill_shell "$dir"
     sleep 1
+    apply_shell_scale
     start_background "$dir"
     if ! wait_for_start "$dir"; then
         echo "Timed out waiting for iNiR to start during repair" >&2
@@ -664,6 +676,7 @@ case "$command_name" in
             esac
         done
         resolve_config_dir
+        apply_shell_scale
         start_background "$config_dir"
         ;;
     stop)
@@ -713,6 +726,7 @@ case "$command_name" in
             esac
         done
         resolve_config_dir
+        apply_shell_scale
         if [[ "$foreground" == true ]]; then
             # Run with a restart loop so hot-reload failures don't kill the session.
             # Exit codes: 0 = clean exit (user quit), anything else = crash/reload failure -> restart.
@@ -747,6 +761,7 @@ case "$command_name" in
             esac
         done
         resolve_config_dir
+        apply_shell_scale
         restart_shell "$config_dir"
         ;;
     kill)

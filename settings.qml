@@ -2,9 +2,7 @@
 //@ pragma Env QS_NO_RELOAD_POPUP=1
 //@ pragma Env QT_QUICK_CONTROLS_STYLE=Basic
 //@ pragma Env QT_QUICK_FLICKABLE_WHEEL_DECELERATION=10000
-
-// Adjust this to make the app smaller or larger
-//@ pragma Env QT_SCALE_FACTOR=1
+// QT_SCALE_FACTOR is set by the launcher from config (appearance.shellScale)
 
 import QtQuick
 import QtQuick.Controls
@@ -171,6 +169,13 @@ ApplicationWindow {
             label: Translation.tr("Auto suspend"),
             description: Translation.tr("Automatically suspend on critical battery"),
             keywords: ["battery", "suspend", "sleep", "auto", "critical"]
+        },
+        {
+            pageIndex: 1, pageName: pages[1].name,
+            section: Translation.tr("Battery"),
+            label: Translation.tr("Charge limit"),
+            description: Translation.tr("Limit maximum charge to preserve battery health"),
+            keywords: ["battery", "charge", "limit", "health", "threshold", "conservation", "sysfs"]
         },
         {
             pageIndex: 1, pageName: pages[1].name,
@@ -581,6 +586,13 @@ ApplicationWindow {
         // =====================================================================
         // Interface (page 5) — per-option entries
         // =====================================================================
+        {
+            pageIndex: 5, pageName: pages[5].name,
+            section: Translation.tr("Display scaling"),
+            label: Translation.tr("Shell scale"),
+            description: Translation.tr("Scale the entire shell UI for HiDPI / 4K monitors"),
+            keywords: ["scale", "dpi", "hidpi", "4k", "zoom", "size", "display", "monitor", "resolution"]
+        },
         {
             pageIndex: 5, pageName: pages[5].name,
             section: Translation.tr("Crosshair overlay"),
