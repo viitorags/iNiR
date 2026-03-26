@@ -447,7 +447,7 @@ Singleton {
                 property string taskManager: "missioncenter"
                 property string terminal: "kitty" // This is only for shell actions
                 property string browser: "firefox" // Used by launcher-backed browser shortcuts
-                property string volumeMixer: `~/.config/quickshell/inir/scripts/launch_first_available.sh "pavucontrol-qt" "pavucontrol"`
+                property string volumeMixer: "pavucontrol"
                 property string discord: "discord" // Shell command to launch Discord client
                 property string update: "kitty -e sudo pacman -Syu" // Command to run system updates
                 property string manageUser: "kcmshell6 kcm_users" // User account management
