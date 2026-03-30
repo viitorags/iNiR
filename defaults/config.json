@@ -126,6 +126,8 @@
             "enableVSCode": true,
             "enableChrome": true,
             "enableSpicetify": false,
+            "enableAdwSteam": false,
+            "adwSteamColorTheme": "adwaita",
             "colorStrength": 1.0,
             "useBackdropForColors": false,
             "colorsOnlyMode": false,

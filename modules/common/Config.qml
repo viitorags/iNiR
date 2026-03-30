@@ -298,6 +298,8 @@ Singleton {
                     property bool enableVSCode: true
                     property bool enableChrome: true
                     property bool enableSpicetify: false
+                    property bool enableAdwSteam: false
+                    property string adwSteamColorTheme: "adwaita"
                     property bool enableOpenCode: false
                     property real colorStrength: 1.0
                     property JsonObject vscodeEditors: JsonObject {

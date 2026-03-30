@@ -37,6 +37,8 @@
                 "termFgBoost": 0.5
             },
             "enableSpicetify": false,
+            "enableAdwSteam": false,
+            "adwSteamColorTheme": "adwaita",
             "enableOpenCode": false,
             "vscodeEditors": {
                 "code": true,
