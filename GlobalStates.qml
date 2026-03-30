@@ -33,6 +33,9 @@ Singleton {
     property bool superDown: false
     property bool superReleaseMightTrigger: true
     property bool wallpaperSelectorOpen: false
+    // Dialog requests from other panels (e.g. left sidebar → right sidebar)
+    property bool requestWifiDialog: false
+    property bool requestBluetoothDialog: false
     // Selection targets: "main", "backdrop", "waffle", "waffle-backdrop"
     property string wallpaperSelectionTarget: "main"
     // Target monitor for wallpaper selector (set before opening, avoids config timing issues)
@@ -53,6 +56,20 @@ Singleton {
         }
     }
     property bool cheatsheetOpen: false
+    property bool coverflowSelectorOpen: false
+    onCoverflowSelectorOpenChanged: {
+        if (!coverflowSelectorOpen) {
+            wallpaperSelectionTarget = "main";
+            wallpaperSelectorTargetMonitor = "";
+            if (Config.options?.wallpaperSelector?.selectionTarget &&
+                Config.options.wallpaperSelector.selectionTarget !== "main") {
+                Config.setNestedValue("wallpaperSelector.selectionTarget", "main")
+            }
+            if (Config.options?.wallpaperSelector?.targetMonitor) {
+                Config.setNestedValue("wallpaperSelector.targetMonitor", "")
+            }
+        }
+    }
     property bool controlPanelOpen: false
     property bool workspaceShowNumbers: false
     property var activeBooruImageMenu: null  // Track which BooruImage has its menu open
@@ -69,6 +86,19 @@ Singleton {
     // Panel family transition animation state
     property bool familyTransitionActive: false
     property string familyTransitionDirection: "left" // "left" = current exits left, new enters from right
+
+    signal requestRipple(real x, real y, string screenName)
+
+    // Primary screen: user-configured preferred monitor for single-window panels (OSD, notifications, wallpaper selector, etc.)
+    // Empty string = use compositor-focused screen, falling back to Quickshell.screens[0]
+    readonly property var primaryScreen: {
+        const name = Config.options?.display?.primaryMonitor ?? ""
+        if (name.length > 0) {
+            const s = Quickshell.screens.find(scr => scr.name === name)
+            if (s) return s
+        }
+        return Quickshell.screens[0]
+    }
 
     // Close other waffle popups when one opens (unless allowMultiplePanels is enabled)
     property bool _allowMultiple: Config.options?.waffles?.behavior?.allowMultiplePanels ?? false
@@ -144,7 +174,7 @@ Singleton {
         Quickshell.execDetached(["hyprctl", "keyword", "cursor:zoom_factor", root.screenZoom.toString()]);
     }
     Behavior on screenZoom {
-        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+        animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
     }
 
     Loader {

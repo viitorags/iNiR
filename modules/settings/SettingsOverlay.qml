@@ -578,7 +578,7 @@ Scope {
 
                 Behavior on opacity {
                     enabled: Appearance.animationsEnabled
-                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                    animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                 }
 
                 MouseArea {
@@ -606,9 +606,10 @@ Scope {
                 radius: Appearance.angelEverywhere ? Appearance.angel.roundingLarge
                       : Appearance.inirEverywhere ? Appearance.inir.roundingLarge
                       : Appearance.rounding.windowRounding
+                // backgroundOpacity only applies to glass styles (aurora/angel) — solid styles stay opaque
                 color: Appearance.auroraEverywhere ? "transparent"
-                     : Appearance.inirEverywhere ? CF.ColorUtils.applyAlpha(Appearance.inir.colLayer0, panelBgOpacity)
-                     : CF.ColorUtils.applyAlpha(Appearance.m3colors.m3background, panelBgOpacity)
+                     : Appearance.inirEverywhere ? Appearance.inir.colLayer0
+                     : Appearance.m3colors.m3background
                 clip: true
 
                 border.width: Appearance.angelEverywhere ? Appearance.angel.panelBorderWidth
@@ -624,11 +625,11 @@ Scope {
 
                 Behavior on opacity {
                     enabled: Appearance.animationsEnabled
-                    animation: Appearance.animation.elementMoveEnter.numberAnimation.createObject(this)
+                    animation: NumberAnimation { duration: Appearance.animation.elementMoveEnter.duration; easing.type: Appearance.animation.elementMoveEnter.type; easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve }
                 }
                 Behavior on scale {
                     enabled: Appearance.animationsEnabled
-                    animation: Appearance.animation.elementMoveEnter.numberAnimation.createObject(this)
+                    animation: NumberAnimation { duration: Appearance.animation.elementMoveEnter.duration; easing.type: Appearance.animation.elementMoveEnter.type; easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve }
                 }
 
                 // Shadow - hidden in aurora/angel (angel uses StyledRectangularShadow)
@@ -680,37 +681,105 @@ Scope {
                         Layout.bottomMargin: 12
                         spacing: 12
 
-                        MaterialSymbol {
-                            text: "settings"
-                            iconSize: Appearance.font.pixelSize.huge
-                            color: Appearance.colors.colPrimary
-                            opacity: 0.85
-                        }
+                        Item {
+                            implicitWidth: 38
+                            implicitHeight: 38
 
-                        StyledText {
-                            text: Translation.tr("Settings")
-                            font {
-                                family: Appearance.font.family.title
-                                pixelSize: Appearance.font.pixelSize.title
-                                variableAxes: Appearance.font.variableAxes.title
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: width / 2
+                                color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
+                                    : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
+                                    : Appearance.inirEverywhere ? Appearance.inir.colLayer1
+                                    : Appearance.colors.colLayer1
+                                border.width: 1
+                                border.color: Appearance.colors.colPrimary
                             }
-                            color: Appearance.colors.colOnLayer0
+
+                            Rectangle {
+                                id: overlayAvatarMask
+                                anchors.centerIn: parent
+                                width: 34
+                                height: 34
+                                radius: width / 2
+                                visible: false
+                            }
+
+                            Image {
+                                id: overlayAvatarImage
+                                anchors.centerIn: parent
+                                width: 34
+                                height: 34
+                                source: `file://${Directories.userAvatarPathRicersAndWeirdSystems}`
+                                fillMode: Image.PreserveAspectCrop
+                                asynchronous: true
+                                cache: true
+                                smooth: true
+                                mipmap: true
+                                visible: false
+                                onStatusChanged: {
+                                    if (status === Image.Error) {
+                                        source = `file://${Directories.userAvatarPathAccountsService}`
+                                    }
+                                }
+                            }
+
+                            OpacityMask {
+                                anchors.centerIn: parent
+                                width: 34
+                                height: 34
+                                source: overlayAvatarImage
+                                maskSource: overlayAvatarMask
+                                visible: overlayAvatarImage.status === Image.Ready
+                            }
+
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                visible: overlayAvatarImage.status !== Image.Ready
+                                text: "person"
+                                iconSize: 18
+                                color: Appearance.colors.colPrimary
+                            }
                         }
 
-                        Item { Layout.fillWidth: true }
+                        ColumnLayout {
+                            spacing: 0
 
-                        // Search field
+                            StyledText {
+                                text: Translation.tr("Settings")
+                                font {
+                                    family: Appearance.font.family.title
+                                    pixelSize: Appearance.font.pixelSize.title
+                                    variableAxes: Appearance.font.variableAxes.title
+                                }
+                                color: Appearance.colors.colOnLayer0
+                            }
+
+                            StyledText {
+                                text: SystemInfo.displayName || SystemInfo.username
+                                font.pixelSize: Appearance.font.pixelSize.small
+                                color: Appearance.colors.colSubtext
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true; Layout.minimumWidth: 8 }
+
                         Rectangle {
                             id: overlaySearchContainer
-                            Layout.preferredWidth: Math.min(360, settingsCard.width * 0.38)
-                            Layout.preferredHeight: 40
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: 420
+                            Layout.minimumWidth: 180
+                            Layout.preferredHeight: 36
+                            Layout.alignment: Qt.AlignVCenter
                             radius: Appearance.rounding.full
                             color: overlaySearchField.activeFocus
                                 ? (Appearance.angelEverywhere ? Appearance.angel.colGlassCard
+                                  : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
+                                  : Appearance.inirEverywhere ? Appearance.inir.colLayer1
                                   : Appearance.colors.colLayer1)
                                 : (Appearance.angelEverywhere ? Appearance.angel.colGlassCard
                                   : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                                  : Appearance.inirEverywhere ? Appearance.inir.colLayer1
+                                  : Appearance.inirEverywhere ? Appearance.inir.colLayer0
                                   : Appearance.m3colors.m3surfaceContainerLow)
                             border.width: overlaySearchField.activeFocus ? 2
                                 : (Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth : 1)
@@ -722,11 +791,11 @@ Scope {
 
                             Behavior on color {
                                 enabled: Appearance.animationsEnabled
-                                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                                animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                             }
                             Behavior on border.color {
                                 enabled: Appearance.animationsEnabled
-                                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                                animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                             }
 
                             RowLayout {
@@ -744,7 +813,7 @@ Scope {
 
                                     Behavior on color {
                                         enabled: Appearance.animationsEnabled
-                                        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                                        animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                                     }
                                 }
 
@@ -821,7 +890,6 @@ Scope {
                                     }
                                 }
 
-                                // Results count badge
                                 Rectangle {
                                     Layout.preferredHeight: 22
                                     Layout.preferredWidth: overlayResultsCountText.implicitWidth + 14
@@ -833,7 +901,7 @@ Scope {
 
                                     Behavior on opacity {
                                         enabled: Appearance.animationsEnabled
-                                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                                        animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                                     }
 
                                     StyledText {
@@ -846,7 +914,6 @@ Scope {
                                     }
                                 }
 
-                                // Clear button
                                 RippleButton {
                                     Layout.preferredWidth: 26
                                     Layout.preferredHeight: 26
@@ -856,7 +923,7 @@ Scope {
                                     opacity: visible ? 1 : 0
                                     Behavior on opacity {
                                         enabled: Appearance.animationsEnabled
-                                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                                        animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                                     }
                                     onClicked: {
                                         overlaySearchField.text = "";
@@ -872,7 +939,23 @@ Scope {
                             }
                         }
 
+                        Item { Layout.fillWidth: true; Layout.minimumWidth: 8 }
+
                         // Close button
+                        RippleButton {
+                            buttonRadius: Appearance.rounding.full
+                            implicitWidth: 36
+                            implicitHeight: 36
+                            onClicked: Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "lock", "activate"])
+                            contentItem: MaterialSymbol {
+                                anchors.centerIn: parent
+                                horizontalAlignment: Text.AlignHCenter
+                                text: "lock"
+                                iconSize: 20
+                                color: Appearance.colors.colOnSurfaceVariant
+                            }
+                        }
+
                         RippleButton {
                             buttonRadius: Appearance.rounding.full
                             implicitWidth: 36
@@ -975,11 +1058,11 @@ Scope {
 
                                                     Behavior on height {
                                                         enabled: Appearance.animationsEnabled
-                                                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                                                        animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                                                     }
                                                     Behavior on opacity {
                                                         enabled: Appearance.animationsEnabled
-                                                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                                                        animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                                                     }
                                                 }
 
@@ -1001,7 +1084,7 @@ Scope {
 
                                                         Behavior on color {
                                                             enabled: Appearance.animationsEnabled
-                                                            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                                                            animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                                                         }
                                                     }
 
@@ -1020,7 +1103,7 @@ Scope {
 
                                                         Behavior on color {
                                                             enabled: Appearance.animationsEnabled
-                                                            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                                                            animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                                                         }
                                                     }
                                                 }
@@ -1039,8 +1122,7 @@ Scope {
                             radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal
                                  : Appearance.inirEverywhere ? Appearance.inir.roundingNormal
                                  : Appearance.rounding.normal
-                            color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                                 : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
+                            color: Appearance.auroraEverywhere ? "transparent"
                                  : Appearance.inirEverywhere ? Appearance.inir.colLayer1
                                  : Appearance.m3colors.m3surfaceContainerLow
                             border.width: Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth
@@ -1048,6 +1130,22 @@ Scope {
                             border.color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
                                         : Appearance.inirEverywhere ? Appearance.inir.colBorderSubtle : "transparent"
                             clip: true
+
+                            // Glass background for aurora/angel wallpaper blur in content area
+                            GlassBackground {
+                                anchors.fill: parent
+                                z: -1
+                                visible: Appearance.auroraEverywhere && !Appearance.inirEverywhere
+                                screenX: settingsCard.x + overlayContentContainer.x + 16
+                                screenY: settingsCard.y + overlayContentContainer.y + 16
+                                screenWidth: settingsPanel.width
+                                screenHeight: settingsPanel.height
+                                fallbackColor: "transparent"
+                                auroraTransparency: Appearance.angelEverywhere
+                                    ? Appearance.angel.cardTransparentize
+                                    : Appearance.aurora.subSurfaceTransparentize
+                                radius: parent.radius
+                            }
 
                             // Loading indicator
                             CircularProgress {
@@ -1137,7 +1235,7 @@ Scope {
 
                                         Behavior on opacity {
                                             enabled: Appearance.animationsEnabled
-                                            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                                            animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                                         }
                                     }
                                 }
@@ -1426,6 +1524,8 @@ Scope {
                                 }
                             }
                         }
+
+                        Item { Layout.fillWidth: true }
                     }
 
                     // No results indicator
@@ -1438,6 +1538,8 @@ Scope {
                         height: 36
                         radius: Appearance.rounding.full
                         color: Appearance.angelEverywhere ? Appearance.angel.colGlassPopup
+                             : Appearance.auroraEverywhere ? Appearance.aurora.colPopupSurface
+                             : Appearance.inirEverywhere ? Appearance.inir.colLayer2
                              : Appearance.colors.colLayer1
                         z: 100
 
@@ -1501,17 +1603,27 @@ Scope {
     // ── Page definitions (same as settings.qml) ──
     property int overlayCurrentPage: 0
 
+    // Navigation categories for grouping pages in the rail
+    property var navCategories: [
+        { label: Translation.tr("Appearance"), pages: [0, 4, 3] },
+        { label: Translation.tr("Layout"), pages: [2, 5, 10] },
+        { label: Translation.tr("System"), pages: [1, 6, 7] },
+        { label: Translation.tr("Reference"), pages: [8, 9, 11] }
+    ]
+
     property var overlayPages: [
         {
             name: Translation.tr("Quick"),
             shortName: "",
             icon: "instant_mix",
+            desc: Translation.tr("Wallpaper & quick tweaks"),
             component: Quickshell.shellPath("modules/settings/QuickConfig.qml")
         },
         {
             name: Translation.tr("General"),
             shortName: "",
             icon: "browse",
+            desc: Translation.tr("Audio, battery, language"),
             component: Quickshell.shellPath("modules/settings/GeneralConfig.qml")
         },
         {
@@ -1519,60 +1631,70 @@ Scope {
             shortName: "",
             icon: "toast",
             iconRotation: 180,
+            desc: Translation.tr("Position, tray, modules"),
             component: Quickshell.shellPath("modules/settings/BarConfig.qml")
         },
         {
             name: Translation.tr("Background"),
             shortName: "",
             icon: "texture",
+            desc: Translation.tr("Parallax, effects, widgets"),
             component: Quickshell.shellPath("modules/settings/BackgroundConfig.qml")
         },
         {
             name: Translation.tr("Themes"),
             shortName: "",
             icon: "palette",
+            desc: Translation.tr("Colors, fonts, styles"),
             component: Quickshell.shellPath("modules/settings/ThemesConfig.qml")
         },
         {
             name: Translation.tr("Interface"),
             shortName: "",
             icon: "bottom_app_bar",
+            desc: Translation.tr("Dock, sidebar, overview"),
             component: Quickshell.shellPath("modules/settings/InterfaceConfig.qml")
         },
         {
             name: Translation.tr("Services"),
             shortName: "",
             icon: "settings",
+            desc: Translation.tr("Weather, AI, apps"),
             component: Quickshell.shellPath("modules/settings/ServicesConfig.qml")
         },
         {
             name: Translation.tr("Advanced"),
             shortName: "",
             icon: "construction",
+            desc: Translation.tr("Color gen, performance"),
             component: Quickshell.shellPath("modules/settings/AdvancedConfig.qml")
         },
         {
             name: Translation.tr("Shortcuts"),
             shortName: "",
             icon: "keyboard",
+            desc: Translation.tr("Keybindings reference"),
             component: Quickshell.shellPath("modules/settings/CheatsheetConfig.qml")
         },
         {
             name: Translation.tr("Modules"),
             shortName: "",
             icon: "extension",
+            desc: Translation.tr("Enable/disable panels"),
             component: Quickshell.shellPath("modules/settings/ModulesConfig.qml")
         },
         {
             name: Translation.tr("Waffle Style"),
             shortName: "",
             icon: "window",
+            desc: Translation.tr("Win11-style taskbar"),
             component: Quickshell.shellPath("modules/settings/WaffleConfig.qml")
         },
         {
             name: Translation.tr("About"),
             shortName: "",
             icon: "info",
+            desc: Translation.tr("Version & credits"),
             component: Quickshell.shellPath("modules/settings/About.qml")
         }
     ]

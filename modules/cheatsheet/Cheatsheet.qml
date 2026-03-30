@@ -67,7 +67,27 @@ Scope {
 
     PanelWindow {
         id: window
-        visible: root.cheatsheetOpen
+
+        Component.onCompleted: visible = root.cheatsheetOpen
+
+        Connections {
+            target: root
+            function onCheatsheetOpenChanged() {
+                if (root.cheatsheetOpen) {
+                    _closeTimer.stop()
+                    window.visible = true
+                } else {
+                    _closeTimer.restart()
+                }
+            }
+        }
+
+        Timer {
+            id: _closeTimer
+            interval: 250
+            onTriggered: window.visible = false
+        }
+
         exclusionMode: ExclusionMode.Ignore
         color: "transparent"
         WlrLayershell.namespace: "quickshell:cheatsheet"
@@ -113,7 +133,7 @@ Scope {
 
             Behavior on color {
                 enabled: Appearance.animationsEnabled
-                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
             }
 
             Behavior on opacity {
@@ -169,11 +189,11 @@ Scope {
 
             Behavior on color {
                 enabled: Appearance.animationsEnabled
-                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
             }
             Behavior on border.color {
                 enabled: Appearance.animationsEnabled
-                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
             }
 
             property real padding: 8
@@ -222,7 +242,7 @@ Scope {
                     implicitWidth: navRail.expanded ? 150 : 60
                     Behavior on implicitWidth {
                         enabled: Appearance.animationsEnabled
-                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                        animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                     }
 
                     NavigationRail {

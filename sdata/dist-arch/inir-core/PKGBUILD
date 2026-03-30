@@ -8,6 +8,9 @@ depends=(
   # Niri compositor
   niri
   
+  # Wallpaper daemon
+  awww-bin
+  
   # Basic utilities
   bc
   coreutils

@@ -62,6 +62,8 @@ Item { // Bar content region
             },
         ]
     }
+    readonly property bool taskbarEnabled: Config.options?.bar?.modules?.taskbar ?? false
+
     property real useShortenedForm: (Appearance.sizes.barHellaShortenScreenWidthThreshold >= screen?.width) ? 2 : (Appearance.sizes.barShortenScreenWidthThreshold >= screen?.width) ? 1 : 0
     readonly property int baseCenterSideModuleWidth: (useShortenedForm == 2) ? Appearance.sizes.barCenterSideModuleWidthHellaShortened : (useShortenedForm == 1) ? Appearance.sizes.barCenterSideModuleWidthShortened : Appearance.sizes.barCenterSideModuleWidth
     // Both center groups share the same width so workspaces stay perfectly centered
@@ -80,7 +82,9 @@ Item { // Bar content region
     readonly property bool _useGlobalQuantizer: root.wallpaperUrl === Wallpapers.effectiveWallpaperUrl
     ColorQuantizer {
         id: wallpaperColorQuantizer
-        source: root._useGlobalQuantizer ? "" : root.wallpaperUrl
+        source: (Appearance.auroraEverywhere || Appearance.angelEverywhere)
+            ? (root._useGlobalQuantizer ? "" : root.wallpaperUrl)
+            : ""
         depth: 0 // 2^0 = 1 color
         rescaleSize: 10
     }
@@ -97,6 +101,47 @@ Item { // Bar content region
 
     readonly property bool inirEverywhere: Appearance.inirEverywhere
     readonly property bool angelEverywhere: Appearance.angelEverywhere
+    readonly property string leftAction: Config.options?.bar?.leftScrollAction ?? "brightness"
+    readonly property string rightAction: Config.options?.bar?.rightScrollAction ?? "volume"
+
+    function performScrollAction(action: string, isUp: bool): void {
+        if (action === "brightness") {
+            const step = 0.05;
+            root.brightnessMonitor.setBrightness(root.brightnessMonitor.brightness + (isUp ? step : -step));
+        } else if (action === "volume") {
+            if (isUp) Audio.incrementVolume();
+            else Audio.decrementVolume();
+        } else if (action === "workspace") {
+            let up = isUp;
+            if (Config.options?.bar?.workspaces?.invertScroll ?? false) up = !up;
+
+            if (CompositorService.isNiri) {
+                if (up) NiriService.focusWorkspaceUp();
+                else NiriService.focusWorkspaceDown();
+            } else if (CompositorService.isHyprland) {
+                Hyprland.dispatch(up ? "workspace r-1" : "workspace r+1");
+            }
+        }
+    }
+
+    function closeOSD(action: string): void {
+        if (action === "brightness") GlobalStates.osdBrightnessOpen = false;
+        else if (action === "volume") GlobalStates.osdVolumeOpen = false;
+    }
+
+    function getScrollIcon(action: string): string {
+        if (action === "brightness") return "light_mode";
+        if (action === "volume") return "volume_up";
+        if (action === "workspace") return "workspaces";
+        return "";
+    }
+
+    function getScrollTooltip(action: string): string {
+        if (action === "brightness") return Translation.tr("Scroll to change brightness");
+        if (action === "volume") return Translation.tr("Scroll to change volume");
+        if (action === "workspace") return Translation.tr("Scroll to switch workspaces");
+        return "";
+    }
 
     component VerticalBarSeparator: Rectangle {
         Layout.topMargin: Appearance.sizes.baseBarHeight / 3
@@ -226,9 +271,11 @@ Item { // Bar content region
             source: root.wallpaperUrl
             fillMode: Image.PreserveAspectCrop
             cache: true
+            sourceSize.width: root.screen?.width ?? 1920
+            sourceSize.height: root.screen?.height ?? 1080
             asynchronous: true
 
-            layer.enabled: Appearance.effectsEnabled
+            layer.enabled: Appearance.effectsEnabled && barBackground.auroraEverywhere && !root.inirEverywhere
             layer.effect: MultiEffect {
                 source: blurredWallpaper
                 anchors.fill: source
@@ -236,7 +283,7 @@ Item { // Bar content region
                     ? (Appearance.angel.blurSaturation * Appearance.angel.colorStrength)
                     : (Appearance.effectsEnabled ? 0.2 : 0)
                 blurEnabled: Appearance.effectsEnabled
-                blurMax: 100
+                blurMax: 64
                 blur: Appearance.effectsEnabled
                     ? (root.angelEverywhere ? Appearance.angel.blurIntensity : 1)
                     : 0
@@ -278,9 +325,9 @@ Item { // Bar content region
         implicitWidth: leftSectionRowLayout.implicitWidth
         implicitHeight: Appearance.sizes.baseBarHeight
 
-        onScrollDown: root.brightnessMonitor.setBrightness(root.brightnessMonitor.brightness - 0.05)
-        onScrollUp: root.brightnessMonitor.setBrightness(root.brightnessMonitor.brightness + 0.05)
-        onMovedAway: GlobalStates.osdBrightnessOpen = false
+        onScrollDown: root.performScrollAction(root.leftAction, false)
+        onScrollUp: root.performScrollAction(root.leftAction, true)
+        onMovedAway: root.closeOSD(root.leftAction)
         onPressed: event => {
             if (event.button === Qt.LeftButton)
                 GlobalStates.sidebarLeftOpen = !GlobalStates.sidebarLeftOpen;
@@ -291,9 +338,9 @@ Item { // Bar content region
         // ScrollHint as overlay - at the inner edge of the margin space
         ScrollHint {
             id: leftScrollHint
-            reveal: barLeftSideMouseArea.hovered && (Config.options?.bar?.showScrollHints ?? true)
-            icon: "light_mode"
-            tooltipText: Translation.tr("Scroll to change brightness")
+            reveal: barLeftSideMouseArea.hovered && (Config.options?.bar?.showScrollHints ?? true) && root.leftAction !== "none"
+            icon: root.getScrollIcon(root.leftAction)
+            tooltipText: root.getScrollTooltip(root.leftAction)
             side: "left"
             x: Appearance.rounding.screenRounding - implicitWidth - Appearance.sizes.spacingSmall
             anchors.verticalCenter: parent.verticalCenter
@@ -316,9 +363,19 @@ Item { // Bar content region
             }
 
             ActiveWindow {
-                visible: (Config.options?.bar?.modules?.activeWindow ?? true) && root.useShortenedForm === 0
+                visible: (Config.options?.bar?.modules?.activeWindow ?? true) && root.useShortenedForm === 0 && !root.taskbarEnabled
+                Layout.fillWidth: !root.taskbarEnabled
+                Layout.fillHeight: true
+            }
+
+            Loader {
+                active: root.taskbarEnabled
+                visible: active
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                sourceComponent: BarTaskbar {
+                    parentWindow: root.QsWindow.window
+                }
             }
         }
     }
@@ -437,9 +494,9 @@ Item { // Bar content region
         implicitWidth: rightSectionRowLayout.implicitWidth
         implicitHeight: Appearance.sizes.baseBarHeight
 
-        onScrollDown: Audio.decrementVolume();
-        onScrollUp: Audio.incrementVolume();
-        onMovedAway: GlobalStates.osdVolumeOpen = false;
+        onScrollDown: root.performScrollAction(root.rightAction, false)
+        onScrollUp: root.performScrollAction(root.rightAction, true)
+        onMovedAway: root.closeOSD(root.rightAction)
         onPressed: event => {
             if (event.button === Qt.LeftButton) {
                 GlobalStates.sidebarRightOpen = !GlobalStates.sidebarRightOpen;
@@ -451,9 +508,9 @@ Item { // Bar content region
         // ScrollHint as overlay - at the inner edge of the margin space
         ScrollHint {
             id: rightScrollHint
-            reveal: barRightSideMouseArea.hovered && (Config.options?.bar?.showScrollHints ?? true)
-            icon: "volume_up"
-            tooltipText: Translation.tr("Scroll to change volume")
+            reveal: barRightSideMouseArea.hovered && (Config.options?.bar?.showScrollHints ?? true) && root.rightAction !== "none"
+            icon: root.getScrollIcon(root.rightAction)
+            tooltipText: root.getScrollTooltip(root.rightAction)
             side: "right"
             x: parent.width - Appearance.rounding.screenRounding + Appearance.sizes.spacingSmall
             anchors.verticalCenter: parent.verticalCenter
@@ -493,7 +550,7 @@ Item { // Bar content region
                 property color colText: toggled ? Appearance.m3colors.m3onSecondaryContainer : Appearance.colors.colOnLayer0
 
                 Behavior on colText {
-                    animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                    animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                 }
 
                 onPressed: {
@@ -511,7 +568,7 @@ Item { // Bar content region
                         Layout.fillHeight: true
                         Layout.rightMargin: reveal ? indicatorsRowLayout.realSpacing : 0
                         Behavior on Layout.rightMargin {
-                            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                            animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                         }
                         MaterialSymbol {
                             text: "volume_off"
@@ -524,7 +581,7 @@ Item { // Bar content region
                         Layout.fillHeight: true
                         Layout.rightMargin: reveal ? indicatorsRowLayout.realSpacing : 0
                         Behavior on Layout.rightMargin {
-                            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                            animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                         }
                         MaterialSymbol {
                             text: "mic_off"
@@ -544,7 +601,7 @@ Item { // Bar content region
                         implicitHeight: reveal ? notificationUnreadCount.implicitHeight : 0
                         implicitWidth: reveal ? notificationUnreadCount.implicitWidth : 0
                         Behavior on Layout.rightMargin {
-                            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                            animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                         }
                         NotificationUnreadCount {
                             id: notificationUnreadCount

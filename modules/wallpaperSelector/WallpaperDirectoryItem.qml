@@ -30,7 +30,8 @@ MouseArea {
         anchors.fill: parent
         radius: Appearance.rounding.normal
         Behavior on color {
-            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+            enabled: Appearance.animationsEnabled
+            animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
         }
 
         ColumnLayout {
@@ -118,7 +119,8 @@ MouseArea {
                 elide: Text.ElideRight
                 font.pixelSize: Appearance.font.pixelSize.smaller
                 Behavior on color {
-                    animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                    enabled: Appearance.animationsEnabled
+                    animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                 }
                 text: fileModelData.fileName
             }

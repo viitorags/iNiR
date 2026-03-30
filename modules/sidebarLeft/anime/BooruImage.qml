@@ -149,9 +149,9 @@ Button {
                 if (mouse.button !== Qt.RightButton)
                     return
 
-                // Anchor the menu at cursor position instead of image center.
-                // (Coordinates are local to this MouseArea / image contentItem.)
-                menuAnchor.x = mouse.x
+                // Anchor at the right edge of the image so the popup
+                // opens outside the sidebar (popupSide: Edges.Right).
+                menuAnchor.x = parent.width
                 menuAnchor.y = mouse.y
 
                 // Re-open cleanly if it was already open.
@@ -162,7 +162,6 @@ Button {
                 contextMenu.active = true
                 Qt.callLater(() => {
                     contextMenu.updateAnchor()
-                    contextMenu.grabFocus()
                 })
                 mouse.accepted = true
             }
@@ -190,7 +189,18 @@ Button {
             }
 
             onClicked: {
+                // Position anchor at right edge, vertically centered on the button
+                menuAnchor.x = parent.width
+                menuAnchor.y = menuButton.y + menuButton.height / 2
+
+                if (contextMenu.active) {
+                    contextMenu.close()
+                }
+
                 contextMenu.active = true
+                Qt.callLater(() => {
+                    contextMenu.updateAnchor()
+                })
             }
         }
 

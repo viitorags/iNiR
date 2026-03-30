@@ -17,14 +17,12 @@ AbstractQuickPanel {
     // Sizes
     implicitHeight: contentItem.implicitHeight + root.padding * 2
     Behavior on implicitHeight {
-        animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
+        animation: NumberAnimation { duration: Appearance.animation.elementMove.duration; easing.type: Appearance.animation.elementMove.type; easing.bezierCurve: Appearance.animation.elementMove.bezierCurve }
     }
     property real spacing: 6
     property real padding: 6
     readonly property real baseCellWidth: {
-        // This is the wrong calculation, but it looks correct in reality???
-        // (theoretically spacing should be multiplied by 1 column less)
-        const availableWidth = root.width - (root.padding * 2) - (root.spacing * (root.columns))
+        const availableWidth = (scrollView?.availableWidth ?? root.width) - (root.padding * 2) - (root.spacing * (root.columns - 1))
         return availableWidth / root.columns
     }
     readonly property real baseCellHeight: 56
@@ -78,7 +76,7 @@ AbstractQuickPanel {
 
             Column {
                 id: usedRows
-                width: parent.width
+                width: scrollView.availableWidth
                 spacing: root.spacing
 
                 Repeater {

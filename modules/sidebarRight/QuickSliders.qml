@@ -67,10 +67,7 @@ Rectangle {
             sourceComponent: QuickSlider {
                 materialSymbol: "volume_up"
                 modelValue: Audio.sink?.audio?.volume ?? 0
-                onMoved: {
-                    if (Audio.sink?.audio)
-                        Audio.sink.audio.volume = value
-                }
+                onMoved: Audio.setSinkVolume(value)
             }
         }
 
@@ -128,10 +125,10 @@ Rectangle {
             text: quickSlider.materialSymbol
 
             Behavior on color {
-                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
             }
             Behavior on anchors.rightMargin {
-                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
             }
 
         }

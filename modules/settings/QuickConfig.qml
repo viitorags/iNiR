@@ -1,3 +1,4 @@
+import qs
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -341,7 +342,7 @@ ContentPage {
 
                         Behavior on Layout.preferredHeight {
                             enabled: Appearance.animationsEnabled
-                            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                            animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                         }
                     }
 
@@ -473,6 +474,9 @@ ContentPage {
                 spacing: Appearance.sizes.spacingSmall
 
                 property string selectedMonitor: {
+                    const primary = GlobalStates.primaryScreen
+                    const primaryName = primary ? (WallpaperListener.getMonitorName(primary) ?? "") : ""
+                    if (primaryName) return primaryName
                     const focused = WallpaperListener.getFocusedMonitor()
                     if (focused) return focused
                     const screens = Quickshell.screens
@@ -588,7 +592,7 @@ ContentPage {
                                         : Appearance.inirEverywhere ? 1 : (monitorStack.showingBackdrop ? 2 : 1)
                                     border.color: monitorStack.showingBackdrop
                                         ? (Appearance.angelEverywhere ? (Appearance.angel?.colPrimary ?? Appearance.colors.colPrimary) : Appearance.inirEverywhere ? (Appearance.inir?.colAccent ?? Appearance.colors.colPrimary) : Appearance.colors.colPrimary)
-                                        : (Appearance.angelEverywhere ? (Appearance.angel?.colCardBorder ?? Appearance.colors.colLayer1Border) : Appearance.inirEverywhere ? (Appearance.inir?.colBorder ?? Appearance.colors.colLayer1Border) : Appearance.colors.colLayer1Border)
+                                        : (Appearance.angelEverywhere ? (Appearance.angel?.colCardBorder ?? Appearance.colors.colLayer0Border) : Appearance.inirEverywhere ? (Appearance.inir?.colBorder ?? Appearance.colors.colLayer0Border) : Appearance.colors.colLayer0Border)
                                     clip: true
                                     z: monitorStack.showingBackdrop ? 2 : 0
                                     opacity: monitorStack.showingBackdrop ? 1.0 : 0.6
@@ -605,11 +609,11 @@ ContentPage {
 
                                     Behavior on opacity {
                                         enabled: Appearance.animationsEnabled
-                                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                                        animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                                     }
                                     Behavior on z {
                                         enabled: Appearance.animationsEnabled
-                                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                                        animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                                     }
 
                                     StyledImage {
@@ -728,11 +732,11 @@ ContentPage {
                                     opacity: monitorStack.isSelected ? 1.0 : (monCardMa.containsMouse ? 0.95 : 0.8)
                                     Behavior on scale {
                                         enabled: Appearance.animationsEnabled
-                                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                                        animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                                     }
                                     Behavior on opacity {
                                         enabled: Appearance.animationsEnabled
-                                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                                        animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                                     }
 
                                     MouseArea {
@@ -868,7 +872,7 @@ ContentPage {
                                             anchors.centerIn: parent
                                             text: "check"
                                             font.pixelSize: Appearance.font.pixelSize.small
-                                            color: Appearance.inirEverywhere ? Appearance.inir.colOnAccent : Appearance.colors.colOnPrimary
+                                            color: Appearance.inirEverywhere ? Appearance.inir.colOnPrimary : Appearance.colors.colOnPrimary
                                         }
                                     }
 
@@ -892,7 +896,7 @@ ContentPage {
                                         border.color: Appearance.colors.colPrimary
                                         Behavior on border.width {
                                             enabled: Appearance.animationsEnabled
-                                            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                                            animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                                         }
                                     }
                                 }
@@ -913,9 +917,9 @@ ContentPage {
                          : Appearance.colors.colLayer1
                     border.width: Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth
                         : Appearance.inirEverywhere ? 1 : (Appearance.auroraEverywhere ? 0 : 1)
-                    border.color: Appearance.angelEverywhere ? (Appearance.angel?.colCardBorder ?? Appearance.colors.colLayer1Border)
-                               : Appearance.inirEverywhere ? (Appearance.inir?.colBorder ?? Appearance.colors.colLayer1Border)
-                               : Appearance.colors.colLayer1Border
+                    border.color: Appearance.angelEverywhere ? (Appearance.angel?.colCardBorder ?? Appearance.colors.colLayer0Border)
+                               : Appearance.inirEverywhere ? (Appearance.inir?.colBorder ?? Appearance.colors.colLayer0Border)
+                               : Appearance.colors.colLayer0Border
                     clip: true
 
                     ColumnLayout {
@@ -972,11 +976,11 @@ ContentPage {
                                         opacity: splitMonCard.isSelected ? 1.0 : 0.75
                                         Behavior on scale {
                                             enabled: Appearance.animationsEnabled
-                                            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                                            animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                                         }
                                         Behavior on opacity {
                                             enabled: Appearance.animationsEnabled
-                                            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                                            animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                                         }
 
                                         MouseArea {
@@ -1100,7 +1104,7 @@ ContentPage {
                                                 anchors.centerIn: parent
                                                 text: "check"
                                                 font.pixelSize: Appearance.font.pixelSize.small
-                                                color: Appearance.inirEverywhere ? Appearance.inir.colOnAccent : Appearance.colors.colOnPrimary
+                                                color: Appearance.inirEverywhere ? Appearance.inir.colOnPrimary : Appearance.colors.colOnPrimary
                                             }
                                         }
 
@@ -1142,7 +1146,7 @@ ContentPage {
                                             border.color: Appearance.colors.colPrimary
                                             Behavior on border.width {
                                                 enabled: Appearance.animationsEnabled
-                                                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                                                animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                                             }
                                         }
                                     }

@@ -1,4 +1,5 @@
 module qs.services
+singleton AwwwBackend 1.0 AwwwBackend.qml
 singleton Ai 1.0 Ai.qml
 singleton AnimeService 1.0 AnimeService.qml
 singleton AppSearch 1.0 AppSearch.qml
@@ -16,6 +17,7 @@ DankSocket 1.0 DankSocket.qml
 singleton DateTime 1.0 DateTime.qml
 singleton EasyEffects 1.0 EasyEffects.qml
 singleton Emojis 1.0 Emojis.qml
+singleton Events 1.0 Events.qml
 singleton FirstRunExperience 1.0 FirstRunExperience.qml
 singleton FontSyncService 1.0 FontSyncService.qml
 singleton GameMode 1.0 GameMode.qml

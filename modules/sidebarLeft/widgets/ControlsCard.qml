@@ -73,8 +73,8 @@ Item {
         }
 
         // Actions
-        Action { btnIcon: "wifi"; tip: Translation.tr("Network"); onClicked: Quickshell.execDetached(["/usr/bin/nm-connection-editor"]); visible: Config.options?.sidebar?.widgets?.controlsCard?.showNetwork ?? true }
-        Action { btnIcon: "bluetooth"; tip: Translation.tr("Bluetooth"); onClicked: Quickshell.execDetached(["/usr/bin/blueman-manager"]); visible: Config.options?.sidebar?.widgets?.controlsCard?.showBluetooth ?? true }
+        Action { btnIcon: "wifi"; tip: Translation.tr("Network"); onClicked: function() { GlobalStates.sidebarLeftOpen = false; GlobalStates.requestWifiDialog = true }; visible: Config.options?.sidebar?.widgets?.controlsCard?.showNetwork ?? true }
+        Action { btnIcon: "bluetooth"; tip: Translation.tr("Bluetooth"); onClicked: function() { GlobalStates.sidebarLeftOpen = false; GlobalStates.requestBluetoothDialog = true }; visible: Config.options?.sidebar?.widgets?.controlsCard?.showBluetooth ?? true }
         Action { btnIcon: "settings"; tip: Translation.tr("Settings"); onClicked: root.openSettings(); visible: Config.options?.sidebar?.widgets?.controlsCard?.showSettings ?? true }
         Action { btnIcon: "lock"; tip: Translation.tr("Lock"); onClicked: Session.lock(); visible: Config.options?.sidebar?.widgets?.controlsCard?.showLock ?? true }
 
@@ -102,7 +102,7 @@ Item {
 
         Behavior on colBackground {
             enabled: Appearance.animationsEnabled
-            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+            animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
         }
 
         contentItem: Item {
@@ -121,7 +121,7 @@ Item {
                         : Appearance.auroraEverywhere ? Appearance.m3colors.m3onSurface
                         : Appearance.colors.colOnLayer0)
                 Behavior on fill { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveFast.duration } }
-                Behavior on color { enabled: Appearance.animationsEnabled; animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this) }
+                Behavior on color { enabled: Appearance.animationsEnabled; animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
             }
         }
 

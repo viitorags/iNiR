@@ -84,9 +84,12 @@ Item {
         acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
         enabled: CompositorService.isHyprland
         onWheel: (event) => {
-            const deltaY = event.angleDelta.y
+            let deltaY = event.angleDelta.y
             if (deltaY === 0)
                 return
+
+            if (Config.options?.bar?.workspaces?.invertScroll ?? false)
+                deltaY = -deltaY
 
             // Requerir varios pasos de rueda antes de cambiar de workspace
             root.wheelStepCounter += 1
@@ -120,10 +123,11 @@ Item {
              : Appearance.inirEverywhere ? Appearance.inir.colLayer1
              : Appearance.auroraEverywhere ? Appearance.aurora.colPopupSurface
              : Appearance.colors.colBackgroundSurfaceContainer
-        border.width: Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth
-                    : Appearance.inirEverywhere ? 1 : 0
+        border.width: Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth : 1
         border.color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-                    : Appearance.inirEverywhere ? Appearance.inir.colBorder : "transparent"
+                    : Appearance.inirEverywhere ? Appearance.inir.colBorder
+                    : Appearance.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.72)
+                    : ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.68)
 
         Column { // Workspaces
             id: workspaceColumnLayout
@@ -171,8 +175,13 @@ Item {
                             topRightRadius: (workspaceAtRight && workspaceAtTop) ? root.largeWorkspaceRadius : root.smallWorkspaceRadius
                             bottomLeftRadius: (workspaceAtLeft && workspaceAtBottom) ? root.largeWorkspaceRadius : root.smallWorkspaceRadius
                             bottomRightRadius: (workspaceAtRight && workspaceAtBottom) ? root.largeWorkspaceRadius : root.smallWorkspaceRadius
-                            border.width: 2
-                            border.color: hoveredWhileDragging ? hoveredBorderColor : "transparent"
+                            border.width: hoveredWhileDragging ? 2 : 1
+                            border.color: hoveredWhileDragging
+                                ? hoveredBorderColor
+                                : (Appearance.angelEverywhere ? ColorUtils.transparentize(Appearance.angel.colCardBorder, 0.64)
+                                    : Appearance.inirEverywhere ? ColorUtils.transparentize(Appearance.inir.colBorder, 0.45)
+                                    : Appearance.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.78)
+                                    : ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.74))
 
                             StyledText {
                                 anchors.centerIn: parent

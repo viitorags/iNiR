@@ -118,6 +118,9 @@
             "enableTerminal": true,
             "enableVesktop": true,
             "enableZed": true,
+            "enableVSCode": true,
+            "enableChrome": true,
+            "enableSpicetify": false,
             "useBackdropForColors": false,
             "terminalGenerationProps": {
                 "forceDarkMode": false,
@@ -141,7 +144,25 @@
                 "starship": true,
                 "btop": true,
                 "lazygit": true,
-                "yazi": true
+                "yazi": true,
+                "omp": true
+            },
+            "enableOpenCode": true,
+            "vscodeEditors": {
+                "code": true,
+                "codium": true,
+                "codeOss": true,
+                "codeInsiders": true,
+                "cursor": true,
+                "windsurf": true,
+                "windsurfNext": true,
+                "qoder": true,
+                "antigravity": true,
+                "positron": true,
+                "voidEditor": true,
+                "melty": true,
+                "pearai": true,
+                "aide": true
             }
         },
         "typography": {
@@ -188,16 +209,33 @@
             "vignetteIntensity": 1,
             "vignetteRadius": 0.7,
             "wallpaperPath": "",
-            "hideWallpaper": false
+            "hideWallpaper": false,
+            "enableAnimation": false,
+            "thumbnailPath": "",
+            "useAuroraStyle": false,
+            "auroraOverlayOpacity": 0.38
         },
         "enableAnimation": true,
         "effects": {
             "blurRadius": 22,
-            "blurStatic": 0,
             "dim": 30,
             "dynamicDim": 20,
             "enableBlur": true,
-            "videoBlurStrength": 50
+            "ripple": {
+                "enable": false,
+                "charging": true,
+                "overview": true,
+                "reload": true,
+                "lock": true,
+                "session": true,
+                "hotcorners": true,
+                "rippleDuration": 3000,
+                "sparkleIntensity": 1.0,
+                "glowIntensity": 1.0,
+                "ringWidth": 0.15
+            },
+            "thumbnailBlurStrength": 50,
+            "enableAnimatedBlur": false
         },
         "hideWhenFullscreen": true,
         "parallax": {
@@ -215,6 +253,26 @@
             "intervalMinutes": 30,
             "generateColors": true,
             "folder": ""
+        },
+        "backend": {
+            "provider": "awww",
+            "awww": {
+                "transitionFps": 60,
+                "simpleStep": 5,
+                "spatialStep": 30
+            }
+        },
+        "transition": {
+            "enable": true,
+            "type": "crossfade",
+            "direction": "right",
+            "duration": 800,
+            "bezier": [
+                0.54,
+                0.0,
+                0.34,
+                0.99
+            ]
         },
         "widgets": {
             "clock": {
@@ -256,7 +314,8 @@
         "multiMonitor": {
             "enable": false
         },
-        "wallpapersByMonitor": []
+        "wallpapersByMonitor": [],
+        "hideUpscaleNotification": false
     },
     "bar": {
         "autoHide": {
@@ -298,6 +357,7 @@
             "resources": true,
             "rightSidebarButton": true,
             "sysTray": true,
+            "taskbar": false,
             "utilButtons": true,
             "weather": true,
             "workspaces": true
@@ -321,14 +381,27 @@
             "workspaces": "center"
         },
         "resources": {
+            "showMemoryIndicator": true,
+            "showSwapIndicator": true,
+            "showTempIndicator": true,
+            "showCpuIndicator": true,
+            "showGpuIndicator": true,
             "alwaysShowCpu": true,
+            "alwaysShowGpu": true,
             "alwaysShowSwap": true,
+            "alwaysShowTemp": true,
+            "tempCautionThreshold": 65,
+            "tempWarningThreshold": 80,
             "cpuWarningThreshold": 90,
+            "gpuWarningThreshold": 90,
             "memoryWarningThreshold": 95,
             "swapWarningThreshold": 85
         },
         "screenList": [],
         "showBackground": true,
+        "showScrollHints": true,
+        "leftScrollAction": "brightness",
+        "rightScrollAction": "volume",
         "topLeftIcon": "spark",
         "tray": {
             "filterPassive": true,
@@ -376,6 +449,7 @@
                 "10"
             ],
             "scrollBehavior": "workspace",
+            "invertScroll": false,
             "showAppIcons": false,
             "showNumberDelay": 300,
             "shown": 5,
@@ -400,6 +474,9 @@
     "crosshair": {
         "code": "0;P;d;1;0l;10;0o;2;1b;0"
     },
+    "display": {
+        "primaryMonitor": ""
+    },
     "dock": {
         "enable": true,
         "enableBlurGlass": false,
@@ -417,7 +494,8 @@
         "showBackground": true,
         "iconSize": 35,
         "separatePinnedFromRunning": true,
-        "enableDragReorder": true
+        "enableDragReorder": true,
+        "style": "panel"
     },
     "settingsUi": {
         "overlayMode": false,
@@ -618,6 +696,8 @@
             "visualize": true
         },
         "keepRightSidebarLoaded": true,
+        "instantOpen": false,
+        "layout": "default",
         "quickSliders": {
             "enable": true,
             "showBrightness": true,
@@ -648,12 +728,28 @@
             },
             "style": "android"
         },
+        "right": {
+            "enabledWidgets": [
+                "dashboard",
+                "calendar",
+                "events",
+                "todo",
+                "notepad",
+                "calculator",
+                "sysmon",
+                "timer"
+            ]
+        },
         "translator": {
             "delay": 300,
             "enable": false
         },
         "tools": {
             "enable": false
+        },
+        "plugins": {
+            "enable": false,
+            "lastActivePlugin": ""
         },
         "ytmusic": {
             "enable": false,
@@ -793,11 +889,29 @@
     },
     "wallpaperSelector": {
         "selectionTarget": "main",
+        "style": "grid",
+        "coverflowView": "gallery",
         "targetMonitor": "",
         "useSystemFileDialog": false
     },
     "screenRecord": {
-        "savePath": ""
+        "savePath": "",
+        "qualityPreset": "balanced",
+        "videoCodec": "libx264",
+        "audioCodec": "aac",
+        "accelerationMode": "auto",
+        "hardwareDevice": "/dev/dri/renderD128",
+        "fps": 60,
+        "videoBitrateKbps": 12000,
+        "audioBitrateKbps": 192,
+        "audioSource": "",
+        "audioBackend": "",
+        "audioSampleRate": 48000,
+        "pixelFormat": "yuv420p",
+        "preset": "veryfast",
+        "crf": 21,
+        "vaapiFilter": "scale_vaapi=format=nv12:out_range=full",
+        "enableFallback": true
     },
     "windows": {
         "centerTitle": true,
@@ -904,12 +1018,19 @@
         "background": {
             "wallpaperPath": "",
             "useMainWallpaper": true,
+            "transition": {
+                "enable": true,
+                "type": "crossfade",
+                "direction": "right",
+                "duration": 800
+            },
             "effects": {
                 "enableBlur": false,
                 "blurRadius": 32,
-                "blurStatic": 0,
                 "dim": 0,
-                "dynamicDim": 0
+                "dynamicDim": 0,
+                "enableAnimatedBlur": false,
+                "thumbnailBlurStrength": 70
             },
             "backdrop": {
                 "enable": true,
@@ -918,11 +1039,14 @@
                 "wallpaperPath": "",
                 "blurRadius": 32,
                 "dim": 35,
-                "saturation": 1.0,
-                "contrast": 1.0,
+                "saturation": 0,
+                "contrast": 0,
                 "vignetteEnabled": false,
                 "vignetteIntensity": 0.5,
-                "vignetteRadius": 0.7
+                "vignetteRadius": 0.7,
+                "enableAnimation": false,
+                "enableAnimatedBlur": false,
+                "thumbnailPath": ""
             },
             "hideWhenFullscreen": true,
             "parallax": {
@@ -1025,6 +1149,7 @@
         "iiTilingOverlay",
         "iiVerticalBar",
         "iiWallpaperSelector",
+        "iiCoverflowSelector",
         "iiClipboard",
         "iiShellUpdate"
     ],

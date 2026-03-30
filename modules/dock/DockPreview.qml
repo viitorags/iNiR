@@ -46,6 +46,12 @@ PopupWindow {
         root.open()
     }
 
+    // Toplevels are already sorted by spatial layout in DockApps.qml
+    // (via CompositorService.sortedToplevels)
+    function _sortedToplevels(): list<var> {
+        return root.appEntry?.toplevels ?? [];
+    }
+
     visible: false
     color: "transparent"
     implicitWidth: contentItem.implicitWidth + ambientShadowWidth + (visualMargin * 2)
@@ -58,7 +64,13 @@ PopupWindow {
             if (!root.visible || !root.appEntry) return
             const appId = root.appEntry.appId
             if (!appId) return
-            const current = ToplevelManager.toplevels.values.filter(
+            // Use CompositorService.sortedToplevels for correct spatial order, 
+            // fallback to ToplevelManager if not available.
+            const allToplevels = CompositorService.sortedToplevels && CompositorService.sortedToplevels.length
+                    ? CompositorService.sortedToplevels
+                    : ToplevelManager.toplevels.values;
+
+            const current = allToplevels.filter(
                 t => t.appId && t.appId.toLowerCase() === appId
             )
             if (current.length === 0) {
@@ -150,11 +162,15 @@ PopupWindow {
 
                 Repeater {
                     model: ScriptModel {
-                        values: root.appEntry?.toplevels ?? []
+                        values: root._sortedToplevels()
                     }
                     delegate: DockWindowPreview {
                         required property var modelData
                         toplevel: modelData
+                        onWindowActivated: {
+                            if (!(Config.options?.dock?.keepPreviewOnClick ?? false))
+                                root.close()
+                        }
                     }
                 }
             }

@@ -11,10 +11,33 @@ import Quickshell.Hyprland
 Scope {
     id: root
     property int sidebarWidth: Appearance.sizes.sidebarWidth
+    readonly property bool instantOpen: Config.options?.sidebar?.instantOpen ?? false
 
     PanelWindow {
         id: sidebarRoot
-        visible: GlobalStates.sidebarRightOpen
+
+        Component.onCompleted: visible = GlobalStates.sidebarRightOpen
+
+        Connections {
+            target: GlobalStates
+            function onSidebarRightOpenChanged() {
+                if (GlobalStates.sidebarRightOpen) {
+                    _closeTimer.stop()
+                    sidebarRoot.visible = true
+                } else if (root.instantOpen || !Appearance.animationsEnabled) {
+                    _closeTimer.stop()
+                    sidebarRoot.visible = false
+                } else {
+                    _closeTimer.restart()
+                }
+            }
+        }
+
+        Timer {
+            id: _closeTimer
+            interval: 300
+            onTriggered: sidebarRoot.visible = false
+        }
 
         function hide() {
             GlobalStates.sidebarRightOpen = false
@@ -23,7 +46,7 @@ Scope {
         exclusiveZone: 0
         implicitWidth: screen?.width ?? 1920
         WlrLayershell.namespace: "quickshell:sidebarRight"
-        WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+        WlrLayershell.keyboardFocus: GlobalStates.sidebarRightOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
         color: "transparent"
 
         anchors {
@@ -54,6 +77,43 @@ Scope {
             }
         }
 
+        Component {
+            id: defaultContentComponent
+            SidebarRightContent {
+                screenWidth: sidebarRoot.screen?.width ?? 1920
+                screenHeight: sidebarRoot.screen?.height ?? 1080
+                panelScreen: sidebarRoot.screen ?? null
+            }
+        }
+
+        Component {
+            id: compactContentComponent
+            CompactSidebarRightContent {
+                screenWidth: sidebarRoot.screen?.width ?? 1920
+                screenHeight: sidebarRoot.screen?.height ?? 1080
+                panelScreen: sidebarRoot.screen ?? null
+            }
+        }
+
+        Component {
+            id: contentStackComponent
+            Item {
+                anchors.fill: parent
+
+                FadeLoader {
+                    anchors.fill: parent
+                    shown: (Config?.options?.sidebar?.layout ?? "default") === "default"
+                    sourceComponent: defaultContentComponent
+                }
+
+                FadeLoader {
+                    anchors.fill: parent
+                    shown: (Config?.options?.sidebar?.layout ?? "default") === "compact"
+                    sourceComponent: compactContentComponent
+                }
+            }
+        }
+
         Loader {
             id: sidebarContentLoader
             active: GlobalStates.sidebarRightOpen || (Config?.options?.sidebar?.keepRightSidebarLoaded ?? true)
@@ -67,23 +127,18 @@ Scope {
             width: sidebarWidth - Appearance.sizes.hyprlandGapsOut - Appearance.sizes.elevationMargin
             height: parent.height - Appearance.sizes.hyprlandGapsOut * 2
 
-            // Simple slide animation using transform (GPU-accelerated)
+            // Full slide-out animation (GPU-accelerated)
             property bool animating: false
             transform: Translate {
-                x: GlobalStates.sidebarRightOpen ? 0 : 30
+                x: GlobalStates.sidebarRightOpen ? 0 : (sidebarWidth + Appearance.sizes.hyprlandGapsOut)
                 Behavior on x {
-                    enabled: Appearance.animationsEnabled
+                    enabled: Appearance.animationsEnabled && !root.instantOpen
                     NumberAnimation {
-                        duration: 150
+                        duration: Appearance.calcEffectiveDuration(250)
                         easing.type: Easing.OutCubic
                         onRunningChanged: sidebarContentLoader.animating = running
                     }
                 }
-            }
-            opacity: GlobalStates.sidebarRightOpen ? 1 : 0
-            Behavior on opacity {
-                enabled: Appearance.animationsEnabled
-                NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
             }
 
             focus: GlobalStates.sidebarRightOpen
@@ -93,11 +148,7 @@ Scope {
                 }
             }
 
-            sourceComponent: SidebarRightContent {
-                screenWidth: sidebarRoot.screen?.width ?? 1920
-                screenHeight: sidebarRoot.screen?.height ?? 1080
-                panelScreen: sidebarRoot.screen ?? null
-            }
+            sourceComponent: contentStackComponent
         }
     }
 
