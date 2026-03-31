@@ -25,7 +25,8 @@
     {
       overlays.default = final: prev: {
         ii = final.callPackage ./nix/package.nix {
-          quickshell = quickshell.packages.${final.system}.default;
+          # quickshell = quickshell.packages.${final.system}.default;
+          quickshell = final.quickshell;
 
           version =
             let

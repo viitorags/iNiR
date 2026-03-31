@@ -2,11 +2,17 @@
   version ? "dirty",
   lib,
   stdenvNoCC,
+  makeWrapper,
   # build
   qt6,
   quickshell,
   wayland-scanner,
   # runtime deps
+  coreutils,
+  procps,
+  systemd,
+  glib,
+  bash,
   brightnessctl,
   cava,
   cliphist,
@@ -20,11 +26,14 @@
   grim,
   slurp,
   matugen,
-  glib,
   gobject-introspection,
   playerctl,
   wireplumber,
   pavucontrol,
+  pamixer,
+  # foot,
+  # dolphin,
+  gnome-keyring,
   mpv,
   yt-dlp,
   socat,
@@ -44,6 +53,7 @@
   fprintd,
   libqalculate,
   # KDE/QML and Extra Packages
+  material-symbols,
   fontconfig,
   dejavu_fonts,
   liberation_ttf,
@@ -58,6 +68,7 @@
     fuzzel
     translate-shell
     kvantum
+    material-symbols
   ],
   calendarSupport ? true,
   darkly ? null,
@@ -66,7 +77,19 @@ let
   giTypelibPath = lib.makeSearchPath "lib/girepository-1.0" [
     glib.out
     gobject-introspection
+    upower
+    playerctl
   ];
+
+  pythonEnv = python3.withPackages (
+    pp:
+    [
+      pp.pygobject3
+      pp.evdev
+      pp.pillow
+    ]
+    ++ lib.optional calendarSupport pp.pygobject3
+  );
 
   runtimeDeps = [
     brightnessctl
@@ -84,6 +107,7 @@ let
     playerctl
     wireplumber
     pavucontrol
+    pamixer
     mpv
     yt-dlp
     socat
@@ -102,12 +126,18 @@ let
     blueman
     fprintd
     libqalculate
-    (python3.withPackages (pp: [
-      pp.pygobject3
-      pp.evdev
-      pp.pillow
-    ]))
-    (python3.withPackages (pp: lib.optional calendarSupport pp.pygobject3))
+    # foot
+    # dolphin
+    kdePackages.kdialog
+    gnome-keyring
+    kdePackages.polkit-kde-agent-1
+    pythonEnv
+    coreutils
+    procps
+    systemd
+    glib
+    kdePackages.kconfig
+    bash
   ]
   ++ lib.optional (darkly != null) darkly;
 
@@ -129,6 +159,7 @@ let
         /lefthook.yml
         /CLAUDE.md
         /CREDITS.md
+        /result
       ]);
   };
 
@@ -156,52 +187,83 @@ stdenvNoCC.mkDerivation {
   pname = "ii";
   inherit version src;
 
-  nativeBuildInputs = [ qt6.wrapQtAppsHook ];
-
-  buildInputs = [
-    qt6.qtbase
-    qt6.qtdeclarative
-    qt6.qtmultimedia
-    qt6.qtwayland
-    qt6.qt5compat
-    qt6.qtsvg
-    qt6.qtimageformats
-    qt6.qtpositioning
-    qt6.qtquicktimeline
-    qt6.qtsensors
-    qt6.qtvirtualkeyboard
-    kdePackages.kirigami
-    kdePackages.kirigami-addons
-    kdePackages.qqc2-desktop-style
-    kdePackages.plasma-integration
-    kdePackages.syntax-highlighting
-    kdePackages.breeze-icons
+  nativeBuildInputs = [
+    qt6.wrapQtAppsHook
+    makeWrapper
   ];
+
+  buildInputs = qmlInputs;
 
   postPatch = ''
     find . -type f -exec sed -i '1s|^#!.*/bin/activate.*python.*|#!/usr/bin/env python3|' {} +
     find . -type f -exec sed -i '1s|^#!.*/bin/activate.*sh.*|#!/usr/bin/env bash|' {} +
     find . -type f -exec sed -i '1s|^#!/usr/bin/env -S.*|#!/usr/bin/env bash|' {} +
+
+    find . -type f \( -name "*.qml" -o -name "*.js" -o -name "*.sh" \) -exec sed -i -E 's|"/usr/bin/([^"]+)"|"\1"|g' {} +
+    find . -type f \( -name "*.qml" -o -name "*.js" -o -name "*.sh" \) -exec sed -i -E 's|"/bin/([^"]+)"|"\1"|g' {} +
   '';
 
   installPhase = ''
     runHook preInstall
-        mkdir -p $out/share/iNiR $out/bin
-        cp -r . $out/share/iNiR
-        makeWrapper ${quickshell}/bin/qs $out/bin/ii
-        runHook postInstall
+    mkdir -p $out/share/iNiR $out/bin
+    cp -r . $out/share/iNiR
+
+    cat > $out/bin/ii <<EOF
+    #!/usr/bin/env bash
+
+    mkdir -p ~/.config/illogical-impulse
+    mkdir -p ~/.local/state/quickshell/user/generated
+
+    for dir in scripts assets defaults translations modules services sdata docs; do
+      if [ -d "$out/share/iNiR/\$dir" ]; then
+        ln -sfn "$out/share/iNiR/\$dir" ~/.config/illogical-impulse/\$dir
+      fi
+    done
+
+    if [ ! -f ~/.config/illogical-impulse/config.json ]; then
+      cp "$out/share/iNiR/defaults/config.json" ~/.config/illogical-impulse/config.json
+      chmod 644 ~/.config/illogical-impulse/config.json
+    fi
+
+    if [ ! -f ~/.local/state/quickshell/states.json ]; then
+      echo "{}" > ~/.local/state/quickshell/states.json
+    fi
+    if [ ! -f ~/.local/state/quickshell/user/notifications.json ]; then
+      echo "[]" > ~/.local/state/quickshell/user/notifications.json
+    fi
+
+    if [ ! -f ~/.local/state/quickshell/user/generated/colors.json ]; then
+      ${lib.getExe matugen} image "$out/share/iNiR/assets/images/default_wallpaper.png" || echo "{}" > ~/.local/state/quickshell/user/generated/colors.json
+    fi
+
+    if [ ! -f ~/.local/state/quickshell/user/gamemode_active ]; then
+      echo "false" > ~/.local/state/quickshell/user/gamemode_active
+    fi
+    if [ ! -f ~/.local/state/quickshell/user/notepad.txt ]; then
+      touch ~/.local/state/quickshell/user/notepad.txt
+    fi
+
+    exec ${lib.getExe quickshell} -p "$out/share/iNiR" "\$@"
+    EOF
+
+    chmod +x $out/bin/ii
+
+    runHook postInstall
   '';
 
   preFixup = ''
     qtWrapperArgs+=(
+      --set QT_PLUGIN_PATH "${lib.makeSearchPath "lib/qt-6/plugins" qmlInputs}"
+      --set QML2_IMPORT_PATH "${lib.makeSearchPath "lib/qt-6/qml" qmlInputs}"
+      
       --prefix PATH : ${lib.makeBinPath (runtimeDeps ++ extraPackages)}
-      --prefix QML2_IMPORT_PATH : "${lib.makeSearchPath "lib/qt-6/qml" qmlInputs}"
       --prefix XDG_DATA_DIRS : ${wayland-scanner}/share
       --prefix XDG_DATA_DIRS : ${kdePackages.breeze-icons}/share
-      --add-flags "-p $out/share/iNiR"
       ${lib.optionalString calendarSupport "--prefix GI_TYPELIB_PATH : ${giTypelibPath}"}
       --set QT_QUICK_CONTROLS_STYLE "org.kde.desktop"
     )
+
+    wrapQtApp $out/bin/ii
   '';
 
   meta = {
