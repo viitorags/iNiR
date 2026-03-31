@@ -9,6 +9,7 @@
 #   {{colors.primary.light.hex}}           → "#rrggbb" (light variant)
 #   {{colors.primary.default.hex}}         → current mode variant
 #   {{colors.primary.default.hex_stripped}} → "rrggbb" (no #)
+#   {{colors.primary.dark.rgb}}            → "R, G, B" (decimal triplet)
 #   {{image}}                              → wallpaper path
 #
 # Template manifest: templates.json (declares input/output paths)

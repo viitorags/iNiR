@@ -29,6 +29,11 @@
       "name": "firefox_materialfox",
       "input": "firefox/materialfox.css",
       "output": "~/.local/state/quickshell/user/generated/firefox-materialfox.css"
+    },
+    {
+      "name": "steam_adwsteam",
+      "input": "steam/adw-colortheme.css",
+      "output": "~/.local/state/quickshell/user/generated/steam-colortheme.css"
     }
   ]
 }

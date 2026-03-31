@@ -90,7 +90,7 @@ ContentPage {
                     colorRegenTimer.restart()
                 }
                 StyledToolTip {
-                    text: Translation.tr("Reinstall Adwaita for Steam skin on wallpaper change (requires AdwSteamGtk)")
+                    text: Translation.tr("Apply Material You colors to Steam via Adwaita for Steam (requires AdwSteamGtk)")
                 }
             }
             SettingsSwitch {

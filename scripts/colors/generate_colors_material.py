@@ -662,6 +662,17 @@ if args.render_templates:
                 palette[c] = rgba_to_hex(g.to_rgba())
         # source_color is the seed itself
         palette["source_color"] = argb_to_hex(argb)
+        # Extended Material tokens (not in MaterialDynamicColors)
+        if is_dark:
+            palette["success"] = "#B5CCBA"
+            palette["onSuccess"] = "#213528"
+            palette["successContainer"] = "#374B3E"
+            palette["onSuccessContainer"] = "#D1E9D6"
+        else:
+            palette["success"] = "#4F6354"
+            palette["onSuccess"] = "#FFFFFF"
+            palette["successContainer"] = "#D1E8D5"
+            palette["onSuccessContainer"] = "#0C1F13"
         return palette
 
     dark_palette = _generate_palette(True)
@@ -671,16 +682,19 @@ if args.render_templates:
     # Build the nested `colors` namespace expected by the compatibility templates:
     #   colors.<token>.dark.hex          → "#rrggbb"
     #   colors.<token>.dark.hex_stripped  → "rrggbb"
+    #   colors.<token>.dark.rgb          → "R, G, B" (decimal triplet)
     #   colors.<token>.light.hex
     #   colors.<token>.default.hex       → follows current mode
     class _Hex:
-        """Tiny wrapper so `hex` / `hex_stripped` resolve as attributes."""
+        """Tiny wrapper so `hex` / `hex_stripped` / `rgb` resolve as attributes."""
 
-        __slots__ = ("hex", "hex_stripped")
+        __slots__ = ("hex", "hex_stripped", "rgb")
 
         def __init__(self, hexval):
             self.hex = hexval
             self.hex_stripped = hexval.lstrip("#")
+            h = self.hex_stripped
+            self.rgb = f"{int(h[0:2], 16)}, {int(h[2:4], 16)}, {int(h[4:6], 16)}"
 
     class _Token:
         __slots__ = ("dark", "light", "default")
