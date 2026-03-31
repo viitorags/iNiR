@@ -477,6 +477,15 @@ ContentPage {
                 radius: Appearance.rounding.small
                 clip: true
 
+                Behavior on Layout.preferredHeight {
+                    enabled: Appearance.animationsEnabled
+                    animation: NumberAnimation {
+                        duration: Appearance.animation.elementMove.duration
+                        easing.type: Appearance.animation.elementMove.type
+                        easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+                    }
+                }
+
                 ScrollView {
                     id: themeScrollView
                     anchors.fill: parent
@@ -506,25 +515,17 @@ ContentPage {
                 }
 
                 // Empty state overlay
-                ColumnLayout {
-                    visible: themesGroup.filteredPresets.length === 0
+                MaterialPlaceholderMessage {
                     anchors.centerIn: parent
-                    spacing: 8
-
-                    MaterialSymbol {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: "search_off"
-                        iconSize: 32
-                        color: Appearance.colors.colSubtext
-                        opacity: 0.5
-                    }
-
-                    StyledText {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: Translation.tr("No themes found")
-                        font.pixelSize: Appearance.font.pixelSize.small
-                        color: Appearance.colors.colSubtext
-                    }
+                    maximumWidth: 300
+                    shown: themesGroup.filteredPresets.length === 0
+                    icon: "search_off"
+                    text: Translation.tr("No themes found")
+                    explanation: themesGroup.searchQuery.length > 0
+                        ? Translation.tr("Try a broader search or clear the filter")
+                        : Translation.tr("Theme presets will appear here")
+                    compact: true
+                    shape: MaterialShape.Shape.Bun
                 }
             }
         }

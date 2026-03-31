@@ -551,11 +551,14 @@ ContentPage {
                         }
 
                         // Empty state
-                        PagePlaceholder {
+                        MaterialPlaceholderMessage {
+                            anchors.centerIn: parent
+                            maximumWidth: 360
                             shown: Wallpapers.folderModel.count === 0
                             icon: "image"
-                            description: Translation.tr("No images found")
-                            shape: MaterialShape.Shape.Cookie7Sided
+                            text: Translation.tr("No images found")
+                            explanation: Translation.tr("Add wallpapers to this folder or choose a different location")
+                            shape: MaterialShape.Shape.Bun
                         }
                     }
                 }

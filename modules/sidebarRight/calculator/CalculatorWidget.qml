@@ -11,15 +11,21 @@ import QtQuick.Layouts
 FocusScope {
     id: root
     focus: true
+    property bool compactMode: false
+    property bool centerContentVertically: false
+    property bool expandedInPanel: true
     readonly property int contentMargin: 10
     readonly property int sectionSpacing: 6
     readonly property int buttonSpacing: 6
     readonly property int availableContentWidth: Math.max(0, width - (contentMargin * 2))
-    readonly property int displayHeight: Math.max(62, Math.min(72, Math.round(width * 0.2)))
+    readonly property int maxDisplayHeight: compactMode ? 72 : 64
+    readonly property int displayHeight: Math.max(56, Math.min(maxDisplayHeight, Math.round(width * 0.2)))
     readonly property int toolButtonHeight: 28
+    readonly property int maxButtonHeight: compactMode ? 48 : 40
     readonly property int compactButtonHeight: {
         const widthBound = Math.floor((Math.max(0, availableContentWidth) - (buttonSpacing * 3)) / 4)
-        return Math.max(36, Math.min(48, widthBound > 0 ? widthBound : 48))
+        const fallback = widthBound > 0 ? widthBound : maxButtonHeight
+        return Math.max(36, Math.min(maxButtonHeight, fallback))
     }
     readonly property int memoryButtonHeight: Math.max(32, Math.min(40, compactButtonHeight - 8))
     readonly property int scientificButtonHeight: compactButtonHeight
@@ -33,7 +39,12 @@ FocusScope {
         + memoryButtonHeight
         + keypadHeight
         + (sectionSpacing * (showHistory ? 6 : 5))
-    implicitHeight: totalContentHeight + (contentMargin * 2)
+    readonly property int naturalImplicitHeight: (contentColumn?.implicitHeight ?? totalContentHeight) + (contentMargin * 2)
+    readonly property int inactivePanelImplicitHeight: 300
+    readonly property int activePanelImplicitHeight: 380
+    implicitHeight: compactMode
+        ? naturalImplicitHeight
+        : Math.min(expandedInPanel ? activePanelImplicitHeight : inactivePanelImplicitHeight, naturalImplicitHeight)
 
     function ensureTypingFocus() {
         if (visible) Qt.callLater(() => root.forceActiveFocus())
@@ -232,12 +243,6 @@ FocusScope {
         contentHeight: contentFrame.height
         boundsBehavior: Flickable.StopAtBounds
 
-        ScrollBar.vertical: ScrollBar {
-            policy: calculatorFlickable.contentHeight > calculatorFlickable.height
-                ? ScrollBar.AsNeeded
-                : ScrollBar.AlwaysOff
-        }
-
         Item {
             id: contentFrame
             width: calculatorFlickable.width
@@ -246,7 +251,9 @@ FocusScope {
             ColumnLayout {
                 id: contentColumn
                 width: parent.width
-                y: Math.max(0, Math.floor((parent.height - implicitHeight) / 2))
+                y: root.centerContentVertically
+                    ? Math.max(0, Math.floor((parent.height - implicitHeight) / 2))
+                    : 0
                 spacing: root.sectionSpacing
 
                 RowLayout {
