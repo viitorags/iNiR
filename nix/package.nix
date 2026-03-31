@@ -138,6 +138,7 @@ let
     glib
     kdePackages.kconfig
     bash
+    quickshell
   ]
   ++ lib.optional (darkly != null) darkly;
 
@@ -199,10 +200,21 @@ stdenvNoCC.mkDerivation {
     find . -type f -exec sed -i '1s|^#!.*/bin/activate.*sh.*|#!/usr/bin/env bash|' {} +
     find . -type f -exec sed -i '1s|^#!/usr/bin/env -S.*|#!/usr/bin/env bash|' {} +
 
-    find . -type f \( -name "*.qml" -o -name "*.js" -o -name "*.sh" \) -exec sed -i -E 's|"/usr/bin/([^"]+)"|"\1"|g' {} +
-    find . -type f \( -name "*.qml" -o -name "*.js" -o -name "*.sh" \) -exec sed -i -E 's|"/bin/([^"]+)"|"\1"|g' {} +
-  '';
+    # Replace hardcoded paths with placeholders to be filled in postInstall
+    find . -type f \( -name "*.qml" -o -name "*.js" -o -name "*.sh" -o -name "*.kdl" -o -name "*.py" \) \
+      -exec sed -i -E 's|(\$HOME\|~)/\.config/quickshell/ii/|@OUT@/share/iNiR/|g' {} +
 
+    # Specifically replace "/usr/bin/qs" and "/bin/qs" with "ii"
+    find . -type f \( -name "*.qml" -o -name "*.js" -o -name "*.sh" -o -name "*.kdl" -o -name "*.py" \) -exec sed -i 's|"/usr/bin/qs"|"ii"|g' {} +
+    find . -type f \( -name "*.qml" -o -name "*.js" -o -name "*.sh" -o -name "*.kdl" -o -name "*.py" \) -exec sed -i 's|"/bin/qs"|"ii"|g' {} +
+
+    # Remove /usr/bin/ and /bin/ prefixes from within quoted strings for other binaries
+    find . -type f \( -name "*.qml" -o -name "*.js" -o -name "*.sh" -o -name "*.kdl" -o -name "*.py" \) -exec sed -i -E 's|"/usr/bin/([^"]+)"|"\1"|g' {} +
+    find . -type f \( -name "*.qml" -o -name "*.js" -o -name "*.sh" -o -name "*.kdl" -o -name "*.py" \) -exec sed -i -E 's|"/bin/([^"]+)"|"\1"|g' {} +
+
+    # Replace standalone qs in shell scripts with ii
+    find . -type f -name "*.sh" -exec sed -i 's/\bqs\b/ii/g' {} +
+  '';
   installPhase = ''
     runHook preInstall
     mkdir -p $out/share/iNiR $out/bin
@@ -213,12 +225,20 @@ stdenvNoCC.mkDerivation {
 
     mkdir -p ~/.config/illogical-impulse
     mkdir -p ~/.local/state/quickshell/user/generated
+    mkdir -p ~/.local/bin
 
     for dir in scripts assets defaults translations modules services sdata docs; do
       if [ -d "$out/share/iNiR/\$dir" ]; then
         ln -sfn "$out/share/iNiR/\$dir" ~/.config/illogical-impulse/\$dir
       fi
     done
+
+    ln -sfn "$out/bin/ii" ~/.config/illogical-impulse/ii
+    ln -sfn "$out/bin/ii" ~/.local/bin/ii
+
+    # Add compatibility symlink for code that might still look for it
+    mkdir -p ~/.config/quickshell
+    ln -sfn ~/.config/illogical-impulse ~/.config/quickshell/ii
 
     if [ ! -f ~/.config/illogical-impulse/config.json ]; then
       cp "$out/share/iNiR/defaults/config.json" ~/.config/illogical-impulse/config.json
@@ -247,8 +267,14 @@ stdenvNoCC.mkDerivation {
     EOF
 
     chmod +x $out/bin/ii
+    ln -s ii $out/bin/qs
 
     runHook postInstall
+  '';
+
+  postInstall = ''
+    # Fill in the @OUT@ placeholder with the actual store path
+    find $out/share/iNiR -type f -exec sed -i "s|@OUT@|$out|g" {} +
   '';
 
   preFixup = ''
@@ -256,6 +282,7 @@ stdenvNoCC.mkDerivation {
       --set QT_PLUGIN_PATH "${lib.makeSearchPath "lib/qt-6/plugins" qmlInputs}"
       --set QML2_IMPORT_PATH "${lib.makeSearchPath "lib/qt-6/qml" qmlInputs}"
       
+      --prefix PATH : "$out/bin"
       --prefix PATH : ${lib.makeBinPath (runtimeDeps ++ extraPackages)}
       --prefix XDG_DATA_DIRS : ${wayland-scanner}/share
       --prefix XDG_DATA_DIRS : ${kdePackages.breeze-icons}/share
