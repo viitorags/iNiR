@@ -100,7 +100,7 @@ Scope {
                             bottom: parent.bottom
                             left: parent.left
                             right: undefined
-                            leftMargin: ((Config?.options.bar.autoHide.enable && !mustShow) || GlobalStates.coverflowSelectorOpen) ? -Appearance.sizes.verticalBarWidth : 0
+                            leftMargin: ((Config?.options.bar.autoHide.enable && !mustShow) || GlobalStates.coverflowSelectorOpen || !GlobalStates.shellEntryReady) ? -Appearance.sizes.verticalBarWidth : 0
                             rightMargin: 0
                         }
                         Behavior on anchors.leftMargin {
@@ -125,7 +125,7 @@ Scope {
                             PropertyChanges {
                                 target: barContent
                                 anchors.topMargin: 0
-                                anchors.rightMargin: ((Config?.options.bar.autoHide.enable && !mustShow) || GlobalStates.coverflowSelectorOpen) ? -Appearance.sizes.verticalBarWidth : 0
+                                anchors.rightMargin: ((Config?.options.bar.autoHide.enable && !mustShow) || GlobalStates.coverflowSelectorOpen || !GlobalStates.shellEntryReady) ? -Appearance.sizes.verticalBarWidth : 0
                             }
                         }
                     }

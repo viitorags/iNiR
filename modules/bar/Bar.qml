@@ -108,7 +108,7 @@ Scope {
                             left: parent.left
                             top: parent.top
                             bottom: undefined
-                            topMargin: ((Config?.options.bar.autoHide.enable && !mustShow) || GlobalStates.coverflowSelectorOpen) ? -Appearance.sizes.barHeight : 0
+                            topMargin: ((Config?.options.bar.autoHide.enable && !mustShow) || GlobalStates.coverflowSelectorOpen || !GlobalStates.shellEntryReady) ? -Appearance.sizes.barHeight : 0
                             bottomMargin: ((Config.options?.interactions?.deadPixelWorkaround?.enable ?? false) && barRoot.anchors.bottom) * -1
                             rightMargin: ((Config.options?.interactions?.deadPixelWorkaround?.enable ?? false) && barRoot.anchors.right) * -1
                         }
@@ -134,7 +134,7 @@ Scope {
                             PropertyChanges {
                                 target: barContent
                                 anchors.topMargin: 0
-                                anchors.bottomMargin: ((Config?.options.bar.autoHide.enable && !mustShow) || GlobalStates.coverflowSelectorOpen) ? -Appearance.sizes.barHeight : 0
+                                anchors.bottomMargin: ((Config?.options.bar.autoHide.enable && !mustShow) || GlobalStates.coverflowSelectorOpen || !GlobalStates.shellEntryReady) ? -Appearance.sizes.barHeight : 0
                             }
                         }
                     }
