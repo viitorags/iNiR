@@ -12,6 +12,8 @@ Rectangle {
     Layout.fillWidth: true
     implicitHeight: statsRow.implicitHeight + 12
 
+    readonly property bool compactMode: Config.options?.controlPanel?.compactMode ?? true
+    
     readonly property bool inirEverywhere: Appearance.inirEverywhere
     readonly property bool auroraEverywhere: Appearance.auroraEverywhere
 
@@ -30,8 +32,8 @@ Rectangle {
     RowLayout {
         id: statsRow
         anchors.fill: parent
-        anchors.margins: 6
-        spacing: 8
+        anchors.margins: root.compactMode ? 5 : 6
+        spacing: root.compactMode ? 6 : 8
 
         // CPU
         StatBar {
@@ -59,8 +61,8 @@ Rectangle {
             active: Battery.available
             sourceComponent: StatBar {
                 label: "BAT"
-                value: (Battery.percentage * 100) ?? 0
-                barColor: ((Battery.percentage * 100) ?? 0) < 20 ? Appearance.colors.colError
+                value: (Battery.percentage ?? 0) * 100
+                barColor: (Battery.percentage ?? 0) * 100 < 20 ? Appearance.colors.colError
                         : Battery.charging ? Appearance.colors.colSuccess
                         : (Appearance.angelEverywhere ? Appearance.angel.colPrimary
                         : root.inirEverywhere ? Appearance.inir.colPrimary : Appearance.colors.colPrimary)
@@ -101,7 +103,7 @@ Rectangle {
 
         Rectangle {
             Layout.fillWidth: true
-            height: 4
+            height: root.compactMode ? 3 : 4
             radius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall : 2
             color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
                  : root.inirEverywhere ? Appearance.inir.colLayer2
