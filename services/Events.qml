@@ -8,7 +8,7 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    property string filePath: `${Directories.state}/user/events.json`
+    property string filePath: Directories.eventsPath
     property var list: []
     property int nextId: 1
     
@@ -247,11 +247,6 @@ Singleton {
         }
     }
 
-    function getPriorityColor(priority) {
-        switch (priority) {
-            case "high": return "#ef4444"
-            case "low": return "#6b7280"
-            default: return "#3b82f6"
-        }
-    }
+    // getPriorityColor removed — was dead code with hardcoded colors.
+    // EventCard already resolves priority colors via Appearance tokens.
 }

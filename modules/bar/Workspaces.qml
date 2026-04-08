@@ -20,21 +20,52 @@ Item {
     readonly property Toplevel activeWindow: ToplevelManager.activeToplevel
     readonly property var wsConfig: Config.options?.bar?.workspaces ?? {}
     
+    // Per-monitor: each bar shows workspaces for its own output (Niri)
+    readonly property bool perMonitor: (wsConfig.perMonitor ?? true) && CompositorService.isNiri
+    readonly property string screenName: root.QsWindow.window?.screen?.name ?? ""
+    readonly property var outputWorkspaces: {
+        if (!CompositorService.isNiri) return []
+        if (perMonitor && screenName.length > 0) {
+            return (NiriService.allWorkspaces ?? []).filter(w => w.output === screenName)
+        }
+        return NiriService.currentOutputWorkspaces ?? []
+    }
+    function workspaceForSlot(slotNumber) {
+        if (!CompositorService.isNiri)
+            return null
+        if (!root.perMonitor)
+            return (NiriService.allWorkspaces ?? []).find(w => w.idx === slotNumber) ?? null
+        const slotIndex = slotNumber - 1
+        if (slotIndex < 0 || slotIndex >= root.outputWorkspaces.length)
+            return null
+        return root.outputWorkspaces[slotIndex] ?? null
+    }
+    function workspaceIndexForSlot(slotNumber) {
+        const ws = workspaceForSlot(slotNumber)
+        return ws?.idx ?? slotNumber
+    }
+
     // Scroll behavior: "workspace" = switch workspaces, "column" = cycle windows left/right in same workspace
     readonly property string scrollBehavior: wsConfig.scrollBehavior ?? "workspace"
     readonly property bool columnMode: scrollBehavior === "column" && CompositorService.isNiri
 
-    readonly property int currentWorkspaceNumber: CompositorService.isNiri
-            ? NiriService.getCurrentWorkspaceNumber()
-            : (monitor?.activeWorkspace?.id || 1)
+    readonly property int currentWorkspaceNumber: {
+        if (CompositorService.isNiri) {
+            if (root.perMonitor) {
+                const activeSlot = root.outputWorkspaces.findIndex(w => w.is_active)
+                return activeSlot >= 0 ? activeSlot + 1 : 1
+            }
+            return NiriService.getCurrentWorkspaceNumber()
+        }
+        return monitor?.activeWorkspace?.id || 1
+    }
     
     // Dynamic workspace count: use actual workspaces from Niri, or fixed count
     readonly property bool dynamicCount: (wsConfig.dynamicCount ?? true) && CompositorService.isNiri
     readonly property int actualWorkspaceCount: {
         if (!dynamicCount) return wsConfig.shown ?? 10
-        // Niri: count workspaces on current output
-        const wsList = NiriService.currentOutputWorkspaces || []
-        return Math.max(wsList.length, 1)
+        // Niri: count workspaces on this output
+        return Math.max(root.outputWorkspaces.length, 1)
     }
     readonly property int workspacesShown: actualWorkspaceCount
     readonly property bool wrapAround: wsConfig.wrapAround ?? true
@@ -53,7 +84,7 @@ Item {
     // Column mode: windows in current workspace
     readonly property var currentWorkspaceWindows: {
         if (!columnMode) return []
-        const currentWs = NiriService.currentOutputWorkspaces?.find(w => w.is_active)
+        const currentWs = root.outputWorkspaces.find(w => w.is_active)
         if (!currentWs) return []
         return NiriService.windows?.filter(w => w.workspace_id === currentWs.id) ?? []
     }
@@ -100,7 +131,7 @@ Item {
 
     function doUpdateWorkspaceOccupied() {
         if (CompositorService.isNiri) {
-            const wsList = NiriService.currentOutputWorkspaces || []
+            const wsList = root.outputWorkspaces || []
             const windows = NiriService.windows || []
             const base = workspaceGroup * root.workspacesShown
 
@@ -113,7 +144,7 @@ Item {
 
             workspaceOccupied = Array.from({ length: root.workspacesShown }, (_, i) => {
                 const targetNumber = base + i + 1
-                const ws = wsList.find(w => w.idx === targetNumber)
+                const ws = root.workspaceForSlot(targetNumber)
                 if (!ws) return false
                 return occupiedWorkspaceIds.has(ws.id)
             })
@@ -217,10 +248,10 @@ Item {
                     if (root.wrapAround) {
                         if (direction > 0 && currentWs >= wsCount) {
                             // At last, go to first
-                            NiriService.switchToWorkspace(1)
+                            NiriService.switchToWorkspace(root.workspaceIndexForSlot(1))
                         } else if (direction < 0 && currentWs <= 1) {
                             // At first, go to last
-                            NiriService.switchToWorkspace(wsCount)
+                            NiriService.switchToWorkspace(root.workspaceIndexForSlot(wsCount))
                         } else {
                             if (direction > 0) NiriService.focusWorkspaceDown()
                             else NiriService.focusWorkspaceUp()
@@ -339,8 +370,7 @@ Item {
                 implicitWidth: vertical ? Appearance.sizes.verticalBarWidth : Appearance.sizes.verticalBarWidth
                 onPressed: {
                     if (CompositorService.isNiri) {
-                        // workspaceValue is a 1-based logical slot; pass it directly as Niri idx.
-                        NiriService.switchToWorkspace(workspaceValue)
+                        NiriService.switchToWorkspace(root.workspaceIndexForSlot(workspaceValue))
                     } else if (CompositorService.isHyprland) {
                         Hyprland.dispatch(`workspace ${workspaceValue}`)
                     }
@@ -353,7 +383,7 @@ Item {
                     implicitWidth: workspaceButtonWidth
                     implicitHeight: workspaceButtonWidth
                     readonly property var niriWorkspace: CompositorService.isNiri 
-                        ? NiriService.allWorkspaces?.find(w => w.idx === button.workspaceValue) ?? null
+                        ? root.workspaceForSlot(button.workspaceValue)
                         : null
                     property var biggestWindow: {
                         if (CompositorService.isNiri) {

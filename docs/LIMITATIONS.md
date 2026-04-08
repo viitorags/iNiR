@@ -106,14 +106,14 @@ ii is built for **Niri**. Some features were inherited from the original Hyprlan
 
 ## Theming
 
-### Matugen
+### Color Generation
 
-- **Required for wallpaper theming**: Without `matugen`, changing wallpapers won't update colors.
+- **Python venv required for wallpaper theming**: The `materialyoucolor` library must be installed in the project venv.
 - **First run is slow**: Initial theme generation can take a few seconds on slower machines.
 
 ### Theme Presets
 
-- Theme presets (Gruvbox, Catppuccin, etc.) override matugen colors. You can't have both "wallpaper-based colors" and "Catppuccin" at the same time.
+- Theme presets (Gruvbox, Catppuccin, etc.) override wallpaper-generated colors. You can't have both "wallpaper-based colors" and "Catppuccin" at the same time.
 
 ### Terminal Theming
 
@@ -196,7 +196,7 @@ ii is built for **Niri**. Some features were inherited from the original Hyprlan
 
 ### Config Hot-Reload
 
-- Most config changes apply immediately. Some (like enabling/disabling modules) require restarting ii with `qs kill -c ii && qs -c ii`.
+- Most config changes apply immediately. Some (like enabling/disabling modules) require restarting iNiR with `inir restart`.
 
 ---
 
@@ -204,7 +204,7 @@ ii is built for **Niri**. Some features were inherited from the original Hyprlan
 
 Before opening an issue and making me read your bug report:
 
-1. Check `qs log -c ii` for errors - the answer is usually right there
+1. Check `inir logs` for errors - the answer is usually right there
 2. Verify the feature isn't listed as a known limitation above - yes, you have to actually read this page
 3. Test with a fresh config: `mv ~/.config/illogical-impulse/config.json ~/.config/illogical-impulse/config.json.bak`
 4. Include your Niri version (`niri --version`) and Quickshell version (`qs --version`)

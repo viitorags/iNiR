@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
+import QtMultimedia
 import Qt5Compat.GraphicalEffects
 import Quickshell.Services.UPower
 import Quickshell.Services.Mpris
@@ -25,14 +26,6 @@ MouseArea {
     // Track if we've attempted unlock at least once (to prevent shake on load)
     property bool hasAttemptedUnlock: false
     
-    // Emergency fallback - 5 rapid right-clicks to force unlock (safety net)
-    property int emergencyClickCount: 0
-    Timer {
-        id: emergencyClickTimer
-        interval: 1000
-        onTriggered: root.emergencyClickCount = 0
-    }
-    
     // Windows 11 Lock Screen Design Tokens (from Looks.qml)
     readonly property color textColor: Looks.colors.fg
     readonly property color textShadowColor: Looks.colors.shadow
@@ -42,6 +35,7 @@ MouseArea {
     readonly property bool blurEnabled: Config.options?.lock?.blur?.enable ?? true
 
     readonly property bool effectsSafe: !CompositorService.isNiri
+    readonly property bool enableAnimation: Config.options?.lock?.enableAnimation ?? false
     
     // Smoke material (Windows 11 - dimming overlay)
     readonly property color smokeColor: ColorUtils.transparentize(Looks.colors.bg0Opaque, 0.5)
@@ -82,12 +76,12 @@ MouseArea {
     }
     
     readonly property bool wallpaperIsVideo: {
-        const lowerPath = _wallpaperPath.toLowerCase();
+        const lowerPath = _wallpaperSource.toLowerCase();
         return lowerPath.endsWith(".mp4") || lowerPath.endsWith(".webm") || lowerPath.endsWith(".mkv") || lowerPath.endsWith(".avi") || lowerPath.endsWith(".mov");
     }
     
     readonly property bool wallpaperIsGif: {
-        return _wallpaperPath.toLowerCase().endsWith(".gif");
+        return _wallpaperSource.toLowerCase().endsWith(".gif");
     }
 
     // Background wallpaper with Acrylic blur effect
@@ -114,15 +108,15 @@ MouseArea {
         }
     }
     
-    // Animated GIF support
+    // Animated GIF support — shows first frame when enableAnimation is false
     AnimatedImage {
         id: gifBackgroundWallpaper
         anchors.fill: parent
-        source: root.wallpaperIsGif ? root._wallpaperPath : ""
+        source: root.wallpaperIsGif ? root._wallpaperSource : ""
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
         visible: root.wallpaperIsGif
-        playing: visible
+        playing: visible && root.enableAnimation
         
         layer.enabled: root.blurEnabled && root.effectsSafe
         layer.effect: FastBlur {
@@ -133,6 +127,64 @@ MouseArea {
         transform: Scale {
             origin.x: gifBackgroundWallpaper.width / 2
             origin.y: gifBackgroundWallpaper.height / 2
+            xScale: root.blurEnabled ? 1.1 : 1
+            yScale: root.blurEnabled ? 1.1 : 1
+        }
+    }
+    
+    // Video wallpaper — shows first frame (paused) when enableAnimation is false
+    Video {
+        id: videoWallpaper
+        anchors.fill: parent
+        visible: root.wallpaperIsVideo
+        source: {
+            if (!root.wallpaperIsVideo || !root._wallpaperSource) return "";
+            const path = root._wallpaperSource;
+            return path.startsWith("file://") ? path : ("file://" + path);
+        }
+        fillMode: VideoOutput.PreserveAspectCrop
+        loops: MediaPlayer.Infinite
+        muted: true
+        autoPlay: true
+
+        readonly property bool shouldPlay: root.enableAnimation
+
+        function pauseAndShowFirstFrame() {
+            pause()
+            seek(0)
+        }
+
+        onPlaybackStateChanged: {
+            if (playbackState === MediaPlayer.PlayingState && !shouldPlay)
+                pauseAndShowFirstFrame()
+            if (playbackState === MediaPlayer.StoppedState && visible && shouldPlay)
+                play()
+        }
+
+        onShouldPlayChanged: {
+            if (visible && root.wallpaperIsVideo) {
+                if (shouldPlay) play()
+                else pauseAndShowFirstFrame()
+            }
+        }
+        
+        onVisibleChanged: {
+            if (visible && root.wallpaperIsVideo) {
+                if (shouldPlay) play()
+                else pauseAndShowFirstFrame()
+            } else {
+                pause()
+            }
+        }
+        
+        layer.enabled: root.blurEnabled && root.effectsSafe
+        layer.effect: FastBlur {
+            radius: root.blurRadius
+        }
+        
+        transform: Scale {
+            origin.x: videoWallpaper.width / 2
+            origin.y: videoWallpaper.height / 2
             xScale: root.blurEnabled ? 1.1 : 1
             yScale: root.blurEnabled ? 1.1 : 1
         }
@@ -284,7 +336,8 @@ MouseArea {
                         }
                         
                         Text {
-                            text: Weather.data?.city ?? ""
+                            text: Weather.visibleCity
+                            visible: Weather.showVisibleCity
                             font.pixelSize: Looks.font.pixelSize.small
                             font.family: Looks.font.family.ui
                             color: Looks.colors.subfg
@@ -548,8 +601,7 @@ MouseArea {
                     Image {
                         id: avatarImage
                         anchors.fill: parent
-                        // Try .face first, then AccountsService
-                        source: `file://${Directories.userAvatarPathRicersAndWeirdSystems}`
+                        source: waffleLockAvatarResolver.resolvedSource
                         fillMode: Image.PreserveAspectCrop
                         asynchronous: true
                         cache: true
@@ -557,7 +609,7 @@ MouseArea {
                         mipmap: true
                         sourceSize.width: avatarCircle.width * 2
                         sourceSize.height: avatarCircle.height * 2
-                        visible: status === Image.Ready || avatarImageFallback.status === Image.Ready
+                        visible: status === Image.Ready
                         
                         layer.enabled: root.effectsSafe
                         layer.effect: OpacityMask {
@@ -568,34 +620,19 @@ MouseArea {
                             }
                         }
                     }
-                    
-                    // Fallback to AccountsService path
-                    Image {
-                        id: avatarImageFallback
-                        anchors.fill: parent
-                        source: avatarImage.status !== Image.Ready 
-                            ? `file://${Directories.userAvatarPathAccountsService}` 
-                            : ""
-                        fillMode: Image.PreserveAspectCrop
-                        asynchronous: true
-                        cache: true
-                        smooth: true
-                        mipmap: true
-                        sourceSize.width: avatarCircle.width * 2
-                        sourceSize.height: avatarCircle.height * 2
-                        visible: status === Image.Ready && avatarImage.status !== Image.Ready
-                        onStatusChanged: {
-                            if (status === Image.Error) {
-                                source = `file://${Directories.userAvatarPathRicersAndWeirdSystems2}`
-                            }
-                        }
-                        
-                        layer.enabled: root.effectsSafe
-                        layer.effect: OpacityMask {
-                            maskSource: Rectangle {
-                                width: avatarCircle.width
-                                height: avatarCircle.height
-                                radius: width / 2
+
+                    QtObject {
+                        id: waffleLockAvatarResolver
+                        property int avatarIndex: 0
+                        readonly property string resolvedSource: Directories.avatarSourceAt(avatarIndex)
+                        readonly property string primaryWatch: Directories.userAvatarSourcePrimary
+                        onPrimaryWatchChanged: avatarIndex = 0
+                        readonly property int imgStatus: avatarImage.status
+                        onImgStatusChanged: {
+                            if (imgStatus === Image.Error) {
+                                const nextIdx = avatarIndex + 1
+                                if (nextIdx < Directories.userAvatarPaths.length)
+                                    avatarIndex = nextIdx
                             }
                         }
                     }
@@ -608,7 +645,7 @@ MouseArea {
                         font.weight: Looks.font.weight.regular
                         font.family: Looks.font.family.ui
                         color: Looks.colors.accentFg
-                        visible: avatarImage.status !== Image.Ready && avatarImageFallback.status !== Image.Ready
+                        visible: avatarImage.status !== Image.Ready
                     }
                 }
             }
@@ -1009,7 +1046,7 @@ MouseArea {
     // ===== INPUT HANDLING =====
     
     hoverEnabled: true
-    acceptedButtons: Qt.LeftButton | Qt.RightButton
+    acceptedButtons: Qt.LeftButton
     focus: true
     activeFocusOnTab: true
     
@@ -1035,18 +1072,6 @@ MouseArea {
     }
     
     onClicked: mouse => {
-        // Emergency fallback: 5 rapid right-clicks to force unlock
-        if (mouse.button === Qt.RightButton) {
-            root.emergencyClickCount++
-            emergencyClickTimer.restart()
-            if (root.emergencyClickCount >= 5) {
-                console.warn("[WaffleLockSurface] Emergency unlock triggered!")
-                root.emergencyClickCount = 0
-                GlobalStates.screenLocked = false
-            }
-            return
-        }
-        
         if (!root.showLoginView) {
             root.switchToLogin()
         } else {

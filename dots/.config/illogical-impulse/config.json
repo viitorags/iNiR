@@ -37,7 +37,8 @@
                 "termFgBoost": 0.5
             },
             "enableSpicetify": false,
-            "enableOpenCode": true,
+            "enableAdwSteam": false,
+            "enableOpenCode": false,
             "vscodeEditors": {
                 "code": true,
                 "codium": true,

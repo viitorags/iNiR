@@ -12,6 +12,8 @@ MouseArea {
     property bool isDirectory: fileModelData.fileIsDir
     property bool useThumbnail: Images.isValidMediaByName(fileModelData.fileName)
 
+    readonly property real _dpr: root.window ? root.window.devicePixelRatio : 1
+
     property alias colBackground: background.color
     property alias colText: wallpaperItemName.color
     property alias radius: background.radius
@@ -63,12 +65,29 @@ MouseArea {
                         id: thumbnailImage
                         generateThumbnail: true
                         sourcePath: fileModelData.filePath
+                        // Force x-large (512px) minimum for crisp grid thumbnails.
+                        // The default auto-detect can pick "large" (256px) for small cells,
+                        // producing visible blur on 300-400px wide grid items.
+                        thumbnailSizeName: {
+                            const auto = Images.thumbnailSizeNameForDimensions(
+                                Math.round(wallpaperItemImageContainer.width * root._dpr),
+                                Math.round(wallpaperItemImageContainer.height * root._dpr)
+                            )
+                            return (auto === "normal" || auto === "large") ? "x-large" : auto
+                        }
 
-                        cache: false
+                        cache: true
                         fillMode: Image.PreserveAspectCrop
                         clip: true
-                        sourceSize.width: wallpaperItemColumnLayout.width
-                        sourceSize.height: wallpaperItemColumnLayout.height - wallpaperItemColumnLayout.spacing - wallpaperItemName.height
+                        smooth: true
+                        sourceSize.width: Math.max(
+                            Math.round(wallpaperItemImageContainer.width * root._dpr),
+                            Images.thumbnailSizes[thumbnailSizeName] ?? 512
+                        )
+                        sourceSize.height: Math.max(
+                            Math.round(wallpaperItemImageContainer.height * root._dpr),
+                            Images.thumbnailSizes[thumbnailSizeName] ?? 512
+                        )
 
                         Connections {
                             target: Wallpapers

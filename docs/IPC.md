@@ -1,26 +1,26 @@
 # IPC Reference
 
-ii exposes IPC targets you can call from Niri keybinds, scripts, or your terminal when you're feeling fancy.
+iNiR exposes IPC targets you can call from Niri keybinds, scripts, or your terminal.
 
 From terminal (for testing, or showing off):
 
 ```bash
-qs -c ii ipc call <target> <function>
+inir <target> <function>
 ```
 
 In Niri config (for actual keybinds):
 
 ```kdl
-bind "Key" { spawn "qs" "-c" "ii" "ipc" "call" "<target>" "<function>"; }
+bind "Key" { spawn "inir" "<target>" "<function>"; }
 ```
 
-Yes, it's verbose. No, there's no shorter way. Welcome to IPC.
+For low-level debugging, `inir ipc <target> <function>` still works.
 
 ---
 
 ## Available Targets
 
-Everything ii can do, exposed for your scripting pleasure.
+Everything iNiR can do, exposed for your scripting pleasure.
 
 ### overview
 
@@ -31,7 +31,7 @@ Toggle the workspace overview panel. The one with all your windows looking tiny 
 | `toggle` | Open/close overview |
 
 ```kdl
-bind "Mod+Space" { spawn "qs" "-c" "ii" "ipc" "call" "overview" "toggle"; }
+bind "Mod+Space" { spawn "inir" "overview" "toggle"; }
 ```
 
 ---
@@ -45,7 +45,7 @@ The central overlay. Search, quick actions, widgets. The thing that pops up and 
 | `toggle` | Open/close overlay |
 
 ```kdl
-bind "Super+G" { spawn "qs" "-c" "ii" "ipc" "call" "overlay" "toggle"; }
+bind "Super+G" { spawn "inir" "overlay" "toggle"; }
 ```
 
 ---
@@ -61,7 +61,7 @@ Clipboard history panel. Because Ctrl+V only remembers one thing, and that's not
 | `close` | Close panel |
 
 ```kdl
-bind "Super+V" { spawn "qs" "-c" "ii" "ipc" "call" "clipboard" "toggle"; }
+bind "Super+V" { spawn "inir" "clipboard" "toggle"; }
 ```
 
 ---
@@ -79,8 +79,8 @@ Alt+Tab window switcher. Works across workspaces, unlike some other implementati
 | `previous` | Focus previous window |
 
 ```kdl
-bind "Alt+Tab" { spawn "qs" "-c" "ii" "ipc" "call" "altSwitcher" "next"; }
-bind "Alt+Shift+Tab" { spawn "qs" "-c" "ii" "ipc" "call" "altSwitcher" "previous"; }
+bind "Alt+Tab" { spawn "inir" "altSwitcher" "next"; }
+bind "Alt+Shift+Tab" { spawn "inir" "altSwitcher" "previous"; }
 ```
 
 ---
@@ -98,9 +98,9 @@ Region selection tools. Screenshots, OCR, recording. Draw a box, get stuff done.
 | `recordWithSound` | Record region with audio |
 
 ```kdl
-bind "Super+Shift+S" { spawn "qs" "-c" "ii" "ipc" "call" "region" "screenshot"; }
-bind "Super+Shift+X" { spawn "qs" "-c" "ii" "ipc" "call" "region" "ocr"; }
-bind "Super+Shift+A" { spawn "qs" "-c" "ii" "ipc" "call" "region" "search"; }
+bind "Super+Shift+S" { spawn "inir" "region" "screenshot"; }
+bind "Super+Shift+X" { spawn "inir" "region" "ocr"; }
+bind "Super+Shift+A" { spawn "inir" "region" "search"; }
 ```
 
 ---
@@ -116,7 +116,7 @@ Voice search using Gemini API. Records from microphone, transcribes with Gemini,
 | `toggle` | Toggle recording |
 
 ```kdl
-bind "Super+Shift+V" { spawn "qs" "-c" "ii" "ipc" "call" "voiceSearch" "toggle"; }
+bind "Super+Shift+V" { spawn "inir" "voiceSearch" "toggle"; }
 ```
 
 ---
@@ -130,7 +130,7 @@ Power menu. Logout, suspend, reboot, shutdown. The "I'm done for today" buttons.
 | `toggle` | Open/close session menu |
 
 ```kdl
-bind "Super+Shift+E" { spawn "qs" "-c" "ii" "ipc" "call" "session" "toggle"; }
+bind "Super+Shift+E" { spawn "inir" "session" "toggle"; }
 ```
 
 ---
@@ -144,7 +144,7 @@ Lock screen. For when you need to pretend you're working.
 | `activate` | Lock the screen |
 
 ```kdl
-bind "Super+Alt+L" allow-when-locked=true { spawn "qs" "-c" "ii" "ipc" "call" "lock" "activate"; }
+bind "Super+Alt+L" allow-when-locked=true { spawn "inir" "lock" "activate"; }
 ```
 
 ---
@@ -158,7 +158,7 @@ Keyboard shortcuts reference. For when you forget what you just configured five 
 | `toggle` | Open/close cheatsheet |
 
 ```kdl
-bind "Super+Slash" { spawn "qs" "-c" "ii" "ipc" "call" "cheatsheet" "toggle"; }
+bind "Super+Slash" { spawn "inir" "cheatsheet" "toggle"; }
 ```
 
 ---
@@ -173,7 +173,7 @@ Close window confirmation dialog. Shows a prompt before closing the focused wind
 | `close` | Dismiss the dialog without closing |
 
 ```kdl
-bind "Mod+Q" repeat=false { spawn "qs" "-c" "ii" "ipc" "call" "closeConfirm" "trigger"; }
+bind "Mod+Q" repeat=false { spawn "inir" "close-window"; }
 ```
 
 By default, confirmation is disabled (closes immediately). Enable it in settings or config:
@@ -195,8 +195,20 @@ Open the settings window. GUI config so you don't have to edit JSON like it's 20
 | `open` | Open settings window |
 
 ```kdl
-bind "Super+Comma" { spawn "qs" "-c" "ii" "ipc" "call" "settings" "open"; }
+bind "Super+Comma" { spawn "inir" "settings"; }
 ```
+
+---
+
+### controlPanel
+
+Quick settings panel. Toggles, sliders, and system controls without opening full settings.
+
+| Function | Description |
+|----------|-------------|
+| `toggle` | Open/close control panel |
+| `open` | Open control panel |
+| `close` | Close control panel |
 
 ---
 
@@ -230,6 +242,26 @@ Top bar visibility.
 
 ---
 
+### globalActions
+
+Command palette / action registry. Search and execute shell actions from scripts or keybinds.
+
+| Function | Description |
+|----------|-------------|
+| `run <id> [args]` | Execute action by ID (e.g. `toggle-mute`, `install-package vim`) |
+| `list [category]` | List all actions, optionally filtered by category |
+| `search <query>` | Fuzzy search actions by name/description/keywords |
+| `open` | Open the overview in action mode |
+
+Categories: `system`, `appearance`, `tools`, `media`, `settings`, `custom`.
+
+```kdl
+bind "Super+Slash" { spawn "inir" "globalActions" "open"; }
+bind "Super+M" { spawn "inir" "globalActions" "run" "toggle-mute"; }
+```
+
+---
+
 ### wallpaperSelector
 
 Wallpaper picker grid.
@@ -239,8 +271,20 @@ Wallpaper picker grid.
 | `toggle` | Open/close wallpaper selector |
 
 ```kdl
-bind "Ctrl+Alt+T" { spawn "qs" "-c" "ii" "ipc" "call" "wallpaperSelector" "toggle"; }
+bind "Ctrl+Alt+T" { spawn "inir" "wallpaperSelector" "toggle"; }
 ```
+
+---
+
+### coverflowSelector
+
+Wallpaper coverflow (3D card) picker.
+
+| Function | Description |
+|----------|-------------|
+| `toggle` | Open/close coverflow selector |
+| `open` | Open coverflow selector |
+| `close` | Close coverflow selector |
 
 ---
 
@@ -311,9 +355,9 @@ Media player control. Automatically detects and uses YtMusic controls when activ
 | `next` | Next track (uses YtMusic if active) |
 
 ```kdl
-bind "Ctrl+Mod+Space" { spawn "qs" "-c" "ii" "ipc" "call" "mpris" "playPause"; }
-bind "Mod+Alt+N" { spawn "qs" "-c" "ii" "ipc" "call" "mpris" "next"; }
-bind "Mod+Alt+P" { spawn "qs" "-c" "ii" "ipc" "call" "mpris" "previous"; }
+bind "Ctrl+Mod+Space" { spawn "inir" "mpris" "playPause"; }
+bind "Mod+Alt+N" { spawn "inir" "mpris" "next"; }
+bind "Mod+Alt+P" { spawn "inir" "mpris" "previous"; }
 ```
 
 ---
@@ -330,7 +374,7 @@ Direct YtMusic player control. Use these if you want to control YtMusic specific
 | `stop` | Stop YtMusic playback |
 
 ```kdl
-bind "Mod+M+Space" { spawn "qs" "-c" "ii" "ipc" "call" "ytmusic" "playPause"; }
+bind "Mod+M+Space" { spawn "inir" "ytmusic" "playPause"; }
 ```
 
 ---
@@ -355,6 +399,29 @@ Clipboard history service. The backend that makes clipboard panel work. You prob
 
 ---
 
+### ai
+
+AI chat service. Multi-provider (Gemini, OpenAI, Mistral) with tool support.
+
+| Function | Description |
+|----------|-------------|
+| `ensureInitialized` | Force-load models and API keys |
+| `diagnose` | Dump current AI state (model, keys, config) as JSON |
+| `run <text>` | Send a message or `/command` to the AI chat |
+
+---
+
+### packageSearch
+
+Package search service. Searches pacman repos and installed packages.
+
+| Function | Description |
+|----------|-------------|
+| `search <query>` | Start a package search |
+| `results` | Print current search results |
+
+---
+
 ### gamemode
 
 Performance mode for gaming. Auto-detects fullscreen apps and disables animations/effects. Can also be toggled manually for those stubborn games that don't go fullscreen properly.
@@ -367,7 +434,7 @@ Performance mode for gaming. Auto-detects fullscreen apps and disables animation
 | `status` | Print current status to logs |
 
 ```kdl
-bind "Super+F12" { spawn "qs" "-c" "ii" "ipc" "call" "gamemode" "toggle"; }
+bind "Super+F12" { spawn "inir" "gamemode" "toggle"; }
 ```
 
 ---
@@ -382,8 +449,25 @@ Switch between panel styles. ii supports two visual styles: Material ii (default
 | `set` | Set specific family ("ii" or "waffle") |
 
 ```kdl
-bind "Mod+Shift+W" { spawn "qs" "-c" "ii" "ipc" "call" "panelFamily" "cycle"; }
+bind "Mod+Shift+W" { spawn "inir" "panelFamily" "cycle"; }
 ```
+
+---
+
+### shellUpdate
+
+Shell update checker. Monitors the git repo for new commits and shows an update overlay.
+
+| Function | Description |
+|----------|-------------|
+| `toggle` | Open/close update overlay |
+| `open` | Open update overlay |
+| `close` | Close update overlay |
+| `check` | Check for updates now |
+| `performUpdate` | Run the update |
+| `dismiss` | Dismiss update notification |
+| `undismiss` | Un-dismiss update notification |
+| `diagnose` | Dump update state as JSON |
 
 ---
 
@@ -407,6 +491,21 @@ Window minimization (Niri workaround - moves windows to hidden workspace).
 |----------|-------------|
 | `minimize` | Minimize focused window |
 | `restore` | Restore a minimized window by ID |
+
+---
+
+### tiling
+
+Tiling layout overlay. Pick or cycle through tiling presets for the current workspace.
+
+| Function | Description |
+|----------|-------------|
+| `toggle` | Open/close tiling picker |
+| `open` | Open tiling picker |
+| `hide` | Close picker and OSD |
+| `cycle` | Cycle to next tiling preset (shows OSD) |
+| `showOsd` | Flash the current tiling preset OSD |
+| `promote` | Promote focused window to master position |
 
 ---
 
@@ -477,3 +576,27 @@ Waffle task view (Win+Tab style).
 | Function | Description |
 |----------|-------------|
 | `toggle` | Open/close task view |
+
+---
+
+### osd
+
+Waffle on-screen display indicator (volume, brightness).
+
+| Function | Description |
+|----------|-------------|
+| `trigger` | Show the OSD indicator |
+
+---
+
+### waffleAltSwitcher
+
+Waffle Alt+Tab window switcher. Separate from the ii `altSwitcher` — supports quick-switch (first tab switches instantly, second opens UI) and no-visual-UI mode.
+
+| Function | Description |
+|----------|-------------|
+| `open` | Open switcher |
+| `close` | Close switcher |
+| `toggle` | Toggle switcher |
+| `next` | Focus next window |
+| `previous` | Focus previous window |

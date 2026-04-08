@@ -6,7 +6,7 @@ import qs.modules.common.widgets
 import qs.modules.common.functions
 
 ContentPage {
-    settingsPageIndex: 7
+    settingsPageIndex: 8
     settingsPageName: Translation.tr("Advanced")
 
     Timer {
@@ -79,6 +79,18 @@ ContentPage {
                 }
                 StyledToolTip {
                     text: Translation.tr("Generate and apply a Spicetify theme from wallpaper colors")
+                }
+            }
+            SettingsSwitch {
+                buttonIcon: "sports_esports"
+                text: Translation.tr("Steam (Adwaita for Steam)")
+                checked: Config.options?.appearance?.wallpaperTheming?.enableAdwSteam ?? false
+                onCheckedChanged: {
+                    Config.setNestedValue("appearance.wallpaperTheming.enableAdwSteam", checked)
+                    colorRegenTimer.restart()
+                }
+                StyledToolTip {
+                    text: Translation.tr("Apply Material You colors to Steam via Adwaita for Steam (requires AdwSteamGtk)")
                 }
             }
             SettingsSwitch {

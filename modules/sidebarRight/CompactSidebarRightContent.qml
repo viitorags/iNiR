@@ -109,6 +109,8 @@ Item {
     // Notification count for badge
     readonly property int notificationCount: Notifications.list?.length ?? 0
 
+    Component.onCompleted: Notifications.ensureInitialized()
+
     property int configVersion: 0
     Connections {
         target: Config
@@ -298,6 +300,8 @@ Item {
                 clip: true
 
                 CalculatorWidget {
+                    compactMode: true
+                    centerContentVertically: true
                     anchors.fill: parent
                     anchors.margins: 6
                 }
@@ -585,7 +589,7 @@ Item {
               : (Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1)
         clip: true
 
-        layer.enabled: auroraEverywhere && !inirEverywhere && !gameModeMinimal
+        layer.enabled: !gameModeMinimal
         layer.effect: GE.OpacityMask {
             maskSource: Rectangle {
                 width: bg.width; height: bg.height; radius: bg.radius
@@ -613,7 +617,7 @@ Item {
                     ? (Appearance.angel.blurSaturation * Appearance.angel.colorStrength)
                     : (Appearance.effectsEnabled ? 0.2 : 0)
                 blurEnabled: Appearance.effectsEnabled
-                blurMax: 64
+                blurMax: 100
                 blur: Appearance.effectsEnabled
                     ? (bg.angelEverywhere ? Appearance.angel.blurIntensity : 1) : 0
             }
@@ -1428,7 +1432,7 @@ Item {
             Hyprland.dispatch("reload")
         else if (CompositorService.isNiri)
             Quickshell.execDetached(["/usr/bin/niri", "msg", "action", "load-config-file"])
-        Quickshell.reload(true)
+        Quickshell.execDetached(["/usr/bin/bash", Quickshell.shellPath("scripts/restart-shell.sh")])
     }
 
     function doSettings() {
@@ -1447,7 +1451,7 @@ Item {
             }
         }
         GlobalStates.sidebarRightOpen = false
-        Qt.callLater(() => Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "settings", "open"]))
+        Qt.callLater(() => Quickshell.execDetached([Quickshell.shellPath("scripts/inir"), "settings"]))
     }
 
     // ═════════════════════════════════════════════════════════════
@@ -1609,93 +1613,64 @@ Item {
 
         ColumnLayout {
             anchors.centerIn: parent
+            width: Math.min(parent.width - 32, 280)
             spacing: 12
-            width: parent.width - 32
 
-            // Animated icon container
-            Rectangle {
-                Layout.alignment: Qt.AlignHCenter
-                Layout.preferredWidth: 56
-                Layout.preferredHeight: 56
-                radius: 28
-                color: bg.inirEverywhere ? Appearance.inir.colLayer1
-                    : bg.angelEverywhere ? ColorUtils.transparentize(Appearance.angel.colPrimary, 0.85)
-                    : bg.auroraEverywhere ? bg.colDarkSurface
-                    : Appearance.colors.colSecondaryContainer
-
-                MaterialSymbol {
-                    anchors.centerIn: parent
-                    text: Notifications.silent ? "notifications_off" : "notifications_none"
-                    iconSize: 28
-                    fill: 0
-                    color: bg.inirEverywhere ? Appearance.inir.colPrimary
-                        : bg.angelEverywhere ? Appearance.angel.colPrimary
-                        : Appearance.m3colors.m3onSecondaryContainer
-
-                    // Subtle breathing animation
-                    SequentialAnimation on opacity {
-                        running: emptyPlaceholder.visible && Appearance.animationsEnabled
-                        loops: Animation.Infinite
-                        NumberAnimation { to: 0.6; duration: 2000; easing.type: Easing.InOutSine }
-                        NumberAnimation { to: 1.0; duration: 2000; easing.type: Easing.InOutSine }
-                    }
-                }
-            }
-
-            // Title
-            StyledText {
-                Layout.alignment: Qt.AlignHCenter
-                text: Notifications.silent
-                    ? Translation.tr("Do Not Disturb")
-                    : Translation.tr("All caught up!")
-                font.pixelSize: Appearance.font.pixelSize.normal
-                font.weight: Font.Medium
-                color: bg.inirEverywhere ? Appearance.inir.colText
-                    : bg.angelEverywhere ? Appearance.angel.colText
-                    : Appearance.colors.colOnLayer1
-            }
-
-            // Subtitle
-            StyledText {
+            MaterialPlaceholderMessage {
                 Layout.alignment: Qt.AlignHCenter
                 Layout.fillWidth: true
-                horizontalAlignment: Text.AlignHCenter
-                text: Notifications.silent
-                    ? Translation.tr("Notifications are muted")
-                    : Translation.tr("No new notifications")
-                font.pixelSize: Appearance.font.pixelSize.smaller
-                color: bg.inirEverywhere ? Appearance.inir.colTextSecondary
-                    : bg.angelEverywhere ? Appearance.angel.colTextSecondary
-                    : Appearance.colors.colSubtext
-                wrapMode: Text.WordWrap
+                maximumWidth: 280
+                compact: true
+                shown: emptyPlaceholder.visible
+                icon: Notifications.silent ? "notifications_off" : "notifications_active"
+                text: Notifications.silent ? Translation.tr("Muted") : Translation.tr("Clear")
+                shape: MaterialShape.Shape.Ghostish
             }
 
-            // Quick action - toggle DND
             RippleButton {
+                id: dndChip
                 Layout.alignment: Qt.AlignHCenter
-                Layout.topMargin: 4
-                implicitWidth: 28; implicitHeight: 36
-                buttonRadius: bg.angelEverywhere ? Appearance.angel.roundingSmall
-                    : bg.inirEverywhere ? Appearance.inir.roundingSmall : 18
-                colBackground: bg.inirEverywhere ? Appearance.inir.colLayer1
-                    : bg.angelEverywhere ? Appearance.angel.colGlassCard
-                    : bg.colDarkSurface
-                colBackgroundHover: bg.inirEverywhere ? Appearance.inir.colLayer1Hover
-                    : bg.angelEverywhere ? Appearance.angel.colGlassCardHover
-                    : bg.colDarkSurfaceHover
+                implicitHeight: 32
+                implicitWidth: dndChipContent.implicitWidth + 20
+                buttonRadius: Appearance.rounding.full
+                colBackground: Notifications.silent
+                    ? (bg.inirEverywhere ? Appearance.inir.colSecondaryContainer
+                        : bg.angelEverywhere ? ColorUtils.transparentize(Appearance.angel.colPrimary, 0.60)
+                        : Appearance.colors.colSecondaryContainer)
+                    : (bg.inirEverywhere ? Appearance.inir.colLayer1
+                        : bg.angelEverywhere ? Appearance.angel.colGlassCard
+                        : bg.colDarkSurface)
+                colBackgroundHover: Notifications.silent
+                    ? (bg.inirEverywhere ? Appearance.inir.colSecondaryContainerHover
+                        : bg.angelEverywhere ? Appearance.angel.colPrimaryHover
+                        : Appearance.colors.colSecondaryContainerHover)
+                    : (bg.inirEverywhere ? Appearance.inir.colLayer1Hover
+                        : bg.angelEverywhere ? Appearance.angel.colGlassCardHover
+                        : bg.colDarkSurfaceHover)
+                colRipple: Notifications.silent
+                    ? (bg.inirEverywhere ? Appearance.inir.colSecondaryContainerActive
+                        : bg.angelEverywhere ? Appearance.angel.colPrimaryActive
+                        : Appearance.colors.colSecondaryContainerActive)
+                    : (bg.inirEverywhere ? Appearance.inir.colLayer1Active
+                        : bg.angelEverywhere ? Appearance.angel.colGlassCardActive
+                        : bg.colDarkSurfaceActive)
                 onClicked: Notifications.silent = !Notifications.silent
 
                 contentItem: RowLayout {
-                    id: dndRow
+                    id: dndChipContent
                     anchors.centerIn: parent
                     spacing: 6
 
                     MaterialSymbol {
                         text: Notifications.silent ? "notifications_active" : "notifications_off"
                         iconSize: 16
-                        color: bg.inirEverywhere ? Appearance.inir.colPrimary
-                            : bg.angelEverywhere ? Appearance.angel.colPrimary
-                            : Appearance.colors.colPrimary
+                        color: Notifications.silent
+                            ? (bg.inirEverywhere ? Appearance.inir.colOnSecondaryContainer
+                                : bg.angelEverywhere ? Appearance.angel.colOnPrimary
+                                : Appearance.m3colors.m3onSecondaryContainer)
+                            : (bg.inirEverywhere ? Appearance.inir.colTextSecondary
+                                : bg.angelEverywhere ? Appearance.angel.colTextSecondary
+                                : Appearance.colors.colSubtext)
                     }
 
                     StyledText {
@@ -1703,9 +1678,13 @@ Item {
                             ? Translation.tr("Enable notifications")
                             : Translation.tr("Enable DND")
                         font.pixelSize: Appearance.font.pixelSize.smaller
-                        color: bg.inirEverywhere ? Appearance.inir.colText
-                            : bg.angelEverywhere ? Appearance.angel.colText
-                            : Appearance.colors.colOnLayer1
+                        color: Notifications.silent
+                            ? (bg.inirEverywhere ? Appearance.inir.colOnSecondaryContainer
+                                : bg.angelEverywhere ? Appearance.angel.colOnPrimary
+                                : Appearance.m3colors.m3onSecondaryContainer)
+                            : (bg.inirEverywhere ? Appearance.inir.colText
+                                : bg.angelEverywhere ? Appearance.angel.colText
+                                : Appearance.colors.colOnLayer1)
                     }
                 }
             }
@@ -1734,7 +1713,7 @@ Item {
                 label: Translation.tr("Screenshot")
                 onClicked: {
                     GlobalStates.sidebarRightOpen = false
-                    Qt.callLater(() => Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "region", "screenshot"]))
+                    Qt.callLater(() => Quickshell.execDetached([Quickshell.shellPath("scripts/inir"), "region", "screenshot"]))
                 }
             }
 
@@ -1744,7 +1723,7 @@ Item {
                 label: Translation.tr("Record")
                 onClicked: {
                     GlobalStates.sidebarRightOpen = false
-                    Qt.callLater(() => Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "region", "record"]))
+                    Qt.callLater(() => Quickshell.execDetached([Quickshell.shellPath("scripts/inir"), "region", "record"]))
                 }
             }
 
@@ -1754,7 +1733,7 @@ Item {
                 label: Translation.tr("OCR")
                 onClicked: {
                     GlobalStates.sidebarRightOpen = false
-                    Qt.callLater(() => Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "region", "ocr"]))
+                    Qt.callLater(() => Quickshell.execDetached([Quickshell.shellPath("scripts/inir"), "region", "ocr"]))
                 }
             }
 
@@ -1764,7 +1743,7 @@ Item {
                 label: Translation.tr("Search")
                 onClicked: {
                     GlobalStates.sidebarRightOpen = false
-                    Qt.callLater(() => Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "region", "search"]))
+                    Qt.callLater(() => Quickshell.execDetached([Quickshell.shellPath("scripts/inir"), "region", "search"]))
                 }
             }
 
@@ -1787,37 +1766,57 @@ Item {
         }
     }
 
-    component BubbleToolTip: ToolTip {
+    component BubbleToolTip: PopupToolTip {
         id: bubble
         property string position: "left" // top | right | left
         delay: 0
-        padding: 0
-        x: position === "left"
-            ? -width - 6
-            : position === "right"
-            ? parent.width + 4
-            : (parent.width - width) / 2
-        y: position === "left" || position === "right"
-            ? (parent.height - height) / 2
-            : -height - 6
-        background: Rectangle {
-            color: bg.angelEverywhere ? Appearance.angel.colPrimary
-                : bg.inirEverywhere ? Appearance.inir.colPrimary
-                : Appearance.colors.colPrimary
-            radius: Appearance.rounding.full
-            implicitWidth: bubbleLabel.implicitWidth + 24
-            implicitHeight: bubbleLabel.implicitHeight + 10
-        }
-        contentItem: StyledText {
-            id: bubbleLabel
-            text: bubble.text
-            font.pixelSize: Appearance.font.pixelSize.small
-            font.weight: Font.Medium
-            color: bg.angelEverywhere ? Appearance.angel.colOnPrimary
-                : bg.inirEverywhere ? Appearance.inir.colOnPrimary
-                : Appearance.colors.colOnPrimary
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
+        horizontalPadding: 12
+        verticalPadding: 5
+        anchorEdges: position === "left" ? Edges.Left
+            : position === "right" ? Edges.Right
+            : Edges.Top
+        anchorGravity: anchorEdges
+        contentItem: Item {
+            id: bubbleContent
+            property bool shown: false
+            implicitWidth: bubbleBackground.implicitWidth
+            implicitHeight: bubbleBackground.implicitHeight
+            opacity: shown ? 1 : 0
+            scale: shown ? 1 : 0.9
+
+            Behavior on opacity {
+                enabled: Appearance.animationsEnabled
+                NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Easing.OutCubic }
+            }
+
+            Behavior on scale {
+                enabled: Appearance.animationsEnabled
+                NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Easing.OutCubic }
+            }
+
+            Rectangle {
+                id: bubbleBackground
+                anchors.centerIn: parent
+                color: bg.angelEverywhere ? Appearance.angel.colPrimary
+                    : bg.inirEverywhere ? Appearance.inir.colPrimary
+                    : Appearance.colors.colPrimary
+                radius: Appearance.rounding.full
+                implicitWidth: bubbleLabel.implicitWidth + 24
+                implicitHeight: bubbleLabel.implicitHeight + 10
+
+                StyledText {
+                    id: bubbleLabel
+                    anchors.centerIn: parent
+                    text: bubble.text
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    font.weight: Font.Medium
+                    color: bg.angelEverywhere ? Appearance.angel.colOnPrimary
+                        : bg.inirEverywhere ? Appearance.inir.colOnPrimary
+                        : Appearance.colors.colOnPrimary
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+            }
         }
     }
 

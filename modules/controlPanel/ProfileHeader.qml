@@ -27,14 +27,13 @@ Item {
     }
 
     function openAccountSettings(): void {
-        const cmd = Config.options?.apps?.manageUser ?? "kcmshell6 kcm_users"
-        ShellExec.execCmd(cmd)
+        AppLauncher.launch("manageUser")
         GlobalStates.controlPanelOpen = false
     }
 
     function lockScreen(): void {
         GlobalStates.controlPanelOpen = false
-        Quickshell.execDetached(["/usr/bin/qs", "-c", "ii", "ipc", "call", "lock", "activate"])
+        Quickshell.execDetached([Quickshell.shellPath("scripts/inir"), "lock", "activate"])
     }
 
     RowLayout {
@@ -75,7 +74,7 @@ Item {
                 Image {
                     id: avatarImg
                     anchors.fill: parent
-                    source: `file://${Directories.userAvatarPathRicersAndWeirdSystems}`
+                    source: profileAvatarResolver.resolvedSource
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
                     cache: true
@@ -83,23 +82,30 @@ Item {
                     mipmap: true
                     sourceSize.width: 84
                     sourceSize.height: 84
-                    visible: false
-                    
-                    onStatusChanged: {
-                        if (status === Image.Error) {
-                            if (String(source).indexOf(Directories.userAvatarPathAccountsService) >= 0)
-                                source = `file://${Directories.userAvatarPathRicersAndWeirdSystems2}`
-                            else
-                                source = `file://${Directories.userAvatarPathAccountsService}`
-                        }
+                    visible: status === Image.Ready
+                    layer.enabled: visible
+                    layer.effect: GE.OpacityMask {
+                        maskSource: avatarMask
                     }
                 }
 
-                GE.OpacityMask {
-                    anchors.fill: parent
-                    source: avatarImg
-                    maskSource: avatarMask
-                    visible: avatarImg.status === Image.Ready
+                // Reactive avatar resolver — retries fallback paths without breaking bindings
+                QtObject {
+                    id: profileAvatarResolver
+                    property int avatarIndex: 0
+                    readonly property string resolvedSource: Directories.avatarSourceAt(avatarIndex)
+
+                    readonly property string primaryWatch: Directories.userAvatarSourcePrimary
+                    onPrimaryWatchChanged: avatarIndex = 0
+
+                    readonly property int imgStatus: avatarImg.status
+                    onImgStatusChanged: {
+                        if (imgStatus === Image.Error) {
+                            const nextIdx = avatarIndex + 1
+                            if (nextIdx < Directories.userAvatarPaths.length)
+                                avatarIndex = nextIdx
+                        }
+                    }
                 }
                 
                 // Fallback
