@@ -3247,19 +3247,31 @@ Singleton {
     
     function applyExternalThemes(c) {
         const enableAppsAndShell = Config.options?.appearance?.wallpaperTheming?.enableAppsAndShell ?? true;
-        const enableVesktop = Config.options?.appearance?.wallpaperTheming?.enableVesktop ?? true;
         const enableTerminal = Config.options?.appearance?.wallpaperTheming?.enableTerminal ?? true;
         
         // Manual preset themes must fan out to the SAME pipeline used by
         // wallpaper auto-generation so terminals/editors/chrome/spicetify/sddm/
         // steam/pear all stay in sync with shell tokens.
+        // Delay execution: FileView.setText() uses a 50ms debounce timer, so
+        // the generated JSON files are NOT on disk yet when this function runs.
+        // Without the timer, applycolor.sh reads stale files (first click fails,
+        // second click works because the first click's files finally flushed).
+        // restart() coalesces the double-call from setTheme + onCurrentThemeChanged.
         if (enableAppsAndShell || enableTerminal) {
-            Qt.callLater(() => {
-                Quickshell.execDetached([
-                    "/usr/bin/bash",
-                    Directories.scriptsPath + "/colors/applycolor.sh"
-                ]);
-            });
+            _delayedExternalApplyTimer.restart();
+        }
+    }
+
+    Timer {
+        id: _delayedExternalApplyTimer
+        interval: 120  // > FileView 50ms flush timer, with margin
+        repeat: false
+        running: false
+        onTriggered: {
+            Quickshell.execDetached([
+                "/usr/bin/bash",
+                Directories.scriptsPath + "/colors/applycolor.sh"
+            ]);
         }
     }
     
@@ -3547,6 +3559,10 @@ Singleton {
         id: themeMetaFileView
     }
 
+    FileView {
+        id: scssFileView
+    }
+
     function buildTerminalJson(c) {
         const scss = generateScssFromColors(c);
         const terminalJson = {};
@@ -3579,6 +3595,9 @@ Singleton {
 
         themeMetaFileView.path = Qt.resolvedUrl(Directories.generatedThemeMetaPath)
         themeMetaFileView.setText(JSON.stringify(buildThemeMeta(c), null, 2))
+
+        scssFileView.path = Qt.resolvedUrl(Directories.generatedMaterialScssPath)
+        scssFileView.setText(generateScssFromColors(c))
     }
 
     // ========== Hover Preview System ==========
