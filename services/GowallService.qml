@@ -438,27 +438,16 @@ Singleton {
         property string _destPath: ""
         onExited: (exitCode) => {
             if (exitCode !== 0) { root.error = "Failed to copy result to wallpapers"; return }
-            // Always apply as main wallpaper → runs full color pipeline (switchwall.sh)
-            Wallpapers.apply(_destPath, Appearance.m3colors.darkmode)
-            // Sync all wallpaper surfaces so the gowall result shows everywhere.
-            // Wallpapers.apply() already sets background.wallpaperPath + runs switchwall.sh.
-            // Surfaces with useMainWallpaper=true follow automatically; those with their own
-            // separate wallpaper need an explicit config write to avoid stale images.
+            // Route by active family — each family owns its own wallpaper surface.
+            // Mirrors what the wallpaper selector does via currentSelectionTarget().
             const isWaffle = (Config.options?.panelFamily ?? "ii") === "waffle"
-            if (isWaffle) {
-                if (!(Config.options?.waffles?.background?.useMainWallpaper ?? true)) {
-                    Config.setNestedValue("waffles.background.wallpaperPath", _destPath)
-                    Config.setNestedValue("waffles.background.thumbnailPath", "")
-                }
-                if (!(Config.options?.waffles?.background?.backdrop?.useMainWallpaper ?? true)) {
-                    Config.setNestedValue("waffles.background.backdrop.wallpaperPath", _destPath)
-                    Config.setNestedValue("waffles.background.backdrop.thumbnailPath", "")
-                }
+            const waffleOwnWallpaper = isWaffle && !(Config.options?.waffles?.background?.useMainWallpaper ?? true)
+            if (waffleOwnWallpaper) {
+                // Waffle has its own wallpaper — apply only to waffle surface + regen colors
+                Wallpapers.applySelectionTarget(_destPath, "waffle", Appearance.m3colors.darkmode)
             } else {
-                if (!(Config.options?.background?.backdrop?.useMainWallpaper ?? true)) {
-                    Config.setNestedValue("background.backdrop.wallpaperPath", _destPath)
-                    Config.setNestedValue("background.backdrop.thumbnailPath", "")
-                }
+                // ii, or waffle following main → full pipeline on main wallpaper
+                Wallpapers.apply(_destPath, Appearance.m3colors.darkmode)
             }
         }
     }
