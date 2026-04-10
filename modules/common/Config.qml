@@ -299,6 +299,7 @@ Singleton {
                     property bool enableChrome: true
                     property bool enableSpicetify: false
                     property bool enableAdwSteam: false
+                    property bool enablePearDesktop: false
                     property bool enableOpenCode: false
                     property real colorStrength: 1.0
                     property JsonObject vscodeEditors: JsonObject {
@@ -362,7 +363,7 @@ Singleton {
                         property int grad: 175
                     }
                 }
-                property string iconTheme: "" // System icon theme (tray, GTK/Qt apps)
+                property string iconTheme: "WhiteSur-dark" // System icon theme (tray, GTK/Qt apps)
                 property string dockIconTheme: "" // Dock icon theme (overrides system for dock only)
                 property real shellScale: 1.0 // Legacy compatibility key. Launcher keeps QT_SCALE_FACTOR=1; use appearance.typography.sizeScale.
             }
@@ -555,14 +556,14 @@ Singleton {
                     property real auroraOverlayOpacity: 0.38
                 }
                 property JsonObject parallax: JsonObject {
-                    property bool enable: true
+                    property bool enable: false
                     property string axis: "vertical"
                     property bool vertical: false
                     property bool autoVertical: false
                     property bool enableWorkspace: true
                     property real workspaceShift: 1.0
-                    property real workspaceZoom: 1.07 // Relative to your screen, not wallpaper size
-                    property real zoom: 1.07
+                    property real workspaceZoom: 1.0 // Relative to wallpaper size, with headroom applied internally
+                    property real zoom: 1.0
                     property bool enableSidebar: true
                     property real panelShift: 0.15
                     property real widgetsFactor: 1.2
@@ -931,7 +932,6 @@ Singleton {
                 property int scrimDim: 35
                 property int topMargin: 0
                 property int bottomMargin: 0
-                property bool centerLauncher: false
                 property bool respectBar: true
                 property real maxPanelWidthRatio: 1.0
                 property int workspaceSpacing: 5
@@ -947,6 +947,7 @@ Singleton {
                 property bool keepOverviewOpenOnWindowClick: true
                 property bool closeAfterWindowMove: true
                 property bool showPreviews: false // Show window thumbnails in overview
+                property bool activeScreenOnly: false // Show only on active screen (multi-monitor)
                 property JsonObject dashboard: JsonObject {
                     property bool enable: false
                     property bool showToggles: true
@@ -1424,8 +1425,8 @@ Singleton {
                         property bool autoVertical: true
                         property bool enableWorkspace: false
                         property real workspaceShift: 1.0
-                        property real workspaceZoom: 1.05
-                        property real zoom: 1.05
+                        property real workspaceZoom: 1.0
+                        property real zoom: 1.0
                         property bool enableSidebar: false
                         property real panelShift: 0.12
                         property real widgetsFactor: 1.0
@@ -1464,6 +1465,9 @@ Singleton {
                     property bool tintTrayIcons: false
                     property int iconSize: 26
                     property int searchIconSize: 24
+                    property JsonObject activationWatermark: JsonObject {
+                        property bool enable: false
+                    }
                     property JsonObject desktopPeek: JsonObject {
                         property bool hoverPeek: false
                         property int hoverDelay: 500

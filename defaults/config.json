@@ -127,6 +127,7 @@
             "enableChrome": true,
             "enableSpicetify": false,
             "enableAdwSteam": false,
+            "enablePearDesktop": false,
             "colorStrength": 1.0,
             "useBackdropForColors": false,
             "colorsOnlyMode": false,
@@ -187,7 +188,7 @@
             }
         },
         "shellScale": 1.0,
-        "iconTheme": "",
+        "iconTheme": "WhiteSur-dark",
         "dockIconTheme": ""
     },
     "apps": {
@@ -255,20 +256,20 @@
         },
         "hideWhenFullscreen": true,
         "parallax": {
-            "enable": true,
+            "enable": false,
             "axis": "vertical",
             "autoVertical": false,
             "enableSidebar": true,
             "enableWorkspace": true,
             "workspaceShift": 1.0,
             "vertical": true,
-            "zoom": 1.07,
+            "zoom": 1.0,
             "panelShift": 0.15,
             "widgetDepth": 1.2,
             "pauseDuringTransitions": true,
             "transitionSettleMs": 220,
             "widgetsFactor": 1.2,
-            "workspaceZoom": 1.07
+            "workspaceZoom": 1.0
         },
         "thumbnailPath": "",
         "wallpaperPath": "",
@@ -654,6 +655,7 @@
         "scrimDim": 100
     },
     "overview": {
+        "activeScreenOnly": false,
         "backgroundBlurEnable": true,
         "backgroundBlurRadius": 50,
         "backgroundDim": 40,
@@ -1153,8 +1155,8 @@
                 "enableWorkspace": false,
                 "enableSidebar": false,
                 "workspaceShift": 1.0,
-                "workspaceZoom": 1.05,
-                "zoom": 1.05,
+                "workspaceZoom": 1.0,
+                "zoom": 1.0,
                 "autoVertical": true,
                 "vertical": false,
                 "panelShift": 0.12,
@@ -1192,6 +1194,9 @@
             "iconSize": 26,
             "leftAlignApps": false,
             "monochromeIcons": false,
+            "activationWatermark": {
+                "enable": false
+            },
             "desktopPeek": {
                 "hoverPeek": false,
                 "hoverDelay": 500
