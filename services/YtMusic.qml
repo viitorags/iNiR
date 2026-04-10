@@ -10,6 +10,66 @@ import qs.modules.common
 Singleton {
     id: root
 
+    property bool _resumeRestored: false
+
+    function _persistResume(): void {
+        if (!root.currentVideoId) return
+        Config.setNestedValues({
+            'sidebar.ytmusic.resume.videoId': root.currentVideoId,
+            'sidebar.ytmusic.resume.title': root.currentTitle,
+            'sidebar.ytmusic.resume.artist': root.currentArtist,
+            'sidebar.ytmusic.resume.thumbnail': root.currentThumbnail,
+            'sidebar.ytmusic.resume.url': root.currentUrl,
+            'sidebar.ytmusic.resume.position': root.currentPosition,
+            'sidebar.ytmusic.resume.wasPlaying': root.isPlaying,
+            'sidebar.ytmusic.resume.activePlaylist': root.activePlaylist,
+            'sidebar.ytmusic.resume.currentIndex': root.currentIndex,
+            'sidebar.ytmusic.resume.activePlaylistSource': root.activePlaylistSource
+        })
+    }
+
+    function _clearResume(): void {
+        Config.setNestedValues({
+            'sidebar.ytmusic.resume.videoId': "",
+            'sidebar.ytmusic.resume.title': "",
+            'sidebar.ytmusic.resume.artist': "",
+            'sidebar.ytmusic.resume.thumbnail': "",
+            'sidebar.ytmusic.resume.url': "",
+            'sidebar.ytmusic.resume.position': 0,
+            'sidebar.ytmusic.resume.wasPlaying': false,
+            'sidebar.ytmusic.resume.activePlaylist': [],
+            'sidebar.ytmusic.resume.currentIndex': -1,
+            'sidebar.ytmusic.resume.activePlaylistSource': ""
+        })
+    }
+
+    Timer {
+        id: _resumeSaveTimer
+        interval: 5000
+        repeat: true
+        running: root.currentVideoId !== ""
+        onTriggered: root._persistResume()
+    }
+
+    Component.onDestruction: {
+        if (root.currentVideoId) {
+            root._persistResume()
+            Config.flushWrites()
+        }
+    }
+
+    Timer {
+        id: _resumeSeekTimer
+        interval: 1500
+        repeat: false
+        property real _targetPosition: 0
+        onTriggered: {
+            if (_resumeSeekTimer._targetPosition > 3) {
+                root.seek(_resumeSeekTimer._targetPosition)
+            }
+        }
+    }
+
     property bool available: false
     property bool enabled: Config.options?.sidebar?.ytmusic?.enable ?? false
     property bool searching: false
@@ -230,6 +290,31 @@ Singleton {
         _loadData()
         _findMpvPlayer()
         checkOAuth()
+
+        // Restore previous playback session if applicable.
+        if (!root._resumeRestored) {
+            root._resumeRestored = true
+            const r = Config.options?.sidebar?.ytmusic?.resume
+            if (r?.videoId && r.wasPlaying && !root.currentVideoId) {
+                const item = {
+                    videoId: r.videoId,
+                    title: r.title ?? "",
+                    artist: r.artist ?? "",
+                    thumbnail: r.thumbnail ?? "",
+                    url: r.url ?? ""
+                }
+                const playlist = r.activePlaylist ?? []
+                const idx = r.currentIndex ?? 0
+                const src = r.activePlaylistSource ?? "single"
+                if (playlist.length > 0 && idx >= 0 && idx < playlist.length) {
+                    root.playFromPlaylist(playlist, idx, src)
+                } else {
+                    root.play(item)
+                }
+                _resumeSeekTimer._targetPosition = r.position ?? 0
+                _resumeSeekTimer.start()
+            }
+        }
     }
 
     Timer {
@@ -428,6 +513,7 @@ Singleton {
         root.currentPosition = 0
         root.activePlaylist = []
         root.currentIndex = -1
+        root._clearResume()
     }
 
     function _didTrackEndNaturally(code: int, stderrText: string): bool {
