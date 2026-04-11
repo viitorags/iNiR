@@ -5,6 +5,30 @@ All notable changes to iNiR will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.19.0] - 2026-04-11
+
+### Added
+- **Live update progress**: Setup writes structured progress markers (`progress:STEP:TOTAL:MSG`) during updates. ShellUpdates.qml polls the status file every 2s, parsing step/total/message into reactive properties. UI shows a spinner with step counter (e.g. 3/7) during updates. Watchdog staleness detection prevents infinite timeout on stuck updates.
+- **Sidebar drop, swing, and elastic animations**: Three new sidebar open/close animation types in addition to the existing slide/fade/pop/reveal — drop (vertical slide from above with fade), swing (horizontal scale from edge), and elastic (overshoot bounce with scale). Widget stagger animation intensity reduced for subtler startup.
+- **YTMusic session resume**: Playback state (URL, position, title, etc.) persisted to config every 5s while playing. On shell restart, the last session is restored automatically if playback was active. New `Config.setNestedValues()` batch function prevents multiple config-change emissions during multi-key writes.
+- **WAYLAND_DISPLAY auto-detection**: `apply_qt_runtime_env` now probes `/run/user/<uid>/wayland-*` when `WAYLAND_DISPLAY` is unset — prevents Qt XCB fallback crash on boot-time systemd starts where the compositor hasn't exported the variable yet. `ensure_systemd_graphical_env` added to the bare `start` code path.
+
+### Changed
+- **Dock indicator dots redesign**: Focused dot is now wider (pill shape) with accent color per visual style (angel/inir/aurora/material). Unfocused dots are narrow and dimmed. Fallback dim dot shown for inactive apps when `showAllWindowDots` is off. Config properties hoisted to root for reuse. Vertical-mode anchor overrides removed (unused in current dock modes).
+- **Module list sync**: iiShellUpdate added to ii family, iiTilingOverlay moved from waffle shared to ii-only, iiControlPanel removed from waffle shared. Module lists in ModulesConfig.qml synced with shell.qml. DockAppButton pear-desktop app ID updated. `enablePearDesktop` enabled by default.
+- **Pear Desktop package detection**: Auto-detect whether `youtube-music` (CachyOS) or `pear-desktop` (AUR) is installed instead of hardcoding one name. CDP port changed from 9222 to 9223 to avoid spicetify conflict.
+
+### Fixed
+- **Dock preview popup stability**: ScriptModel `objectProp` with stable `previewKey` prevents delegate recreation on model rebuild (fixes icon flash). 500ms close grace period prevents popup closure when resizing after closing a window moves the cursor outside bounds. Removed stale `syncVisibleWindows`/`maybeCaptureMissingPreviews` machinery — replaced by simple `onLiveToplevelsChanged` auto-close. Closing animation removed for immediate response.
+- **SDDM theme.conf self-heal**: Detects missing `[General]` section or `background=` directive in corrupted theme.conf and restores the canonical template before applying color values.
+- **Config bool false values in color pipeline**: jq's `//` operator treats `false` as null, causing `config_bool` to return the fallback instead of the actual `false` value. Uses explicit null check now.
+- **Setup flag ordering**: `-y`/`-q` flags moved before the `update` subcommand in the re-exec path so the global parser picks them up. POSIX TTY detection (`[ -t 0 ]`) added as defense-in-depth — non-interactive mode auto-forced when no terminal is attached.
+- **GameMode fullscreen detection**: Focused window lookup switched from stale `activeWindow` to `NiriService.windows` array — catches F11 without focus change. Fixed `stateReader.path` where `Qt.resolvedUrl()` on an absolute filesystem path mangled the path, preventing FileView from emitting signals and disabling all detection connections. Input mask across Bar, Dock, VerticalBar, WaffleBar, and Overlay replaced with explicit zero-size emptyMask Item.
+- **Systemd KillMode**: Switched from `KillMode=control-group` to `KillMode=process` so apps launched by the shell (mpv, browsers, etc.) survive shell restart.
+- **Overview search layout without dashboard**: Workspace grid loader now hides from Column layout during search, preventing vertical centering breakage and results pushed to top of screen.
+- **Overview wallpaper without effects**: Workspace thumbnails render unblurred with OpacityMask fallback when `Appearance.effectsEnabled` is false — previously no wallpaper showed at all.
+- **Media player selection**: Fixed player selection logic and scroll volume consistency.
+
 ## [2.18.0] - 2026-04-09
 
 ### Added
@@ -51,9 +75,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Theme regen consistency**: Aligned regeneration across settings, family switch, and external targets.
 - **Preset theme color propagation**: Fixed propagation to external apps and family switch regen.
 - **Fullscreen surface handling**: Unmap all shell surfaces during fullscreen for direct scanout.
-- **Overview search layout without dashboard**: When dashboard panel is disabled, the workspace grid loader stayed visible in the Column layout during search, preventing vertical centering and pushing results to the top of the screen.
-- **Overview wallpaper missing when effects disabled**: Workspace thumbnails showed no wallpaper when `Appearance.effectsEnabled` was false — both the source Image and FastBlur were invisible. Image now renders unblurred with OpacityMask as fallback.
-
 ### Removed
 - **`overview.centerLauncher`**: Config option removed — overview always uses calculated vertical centering.
 - **`spawn-at-startup` compositor entry**: Shell startup ownership moved to systemd user service.
