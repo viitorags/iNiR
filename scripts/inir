@@ -102,7 +102,7 @@ Runtime:
   start, stop, run, restart, kill, terminal, browser, close-window
 
 Maintenance (delegates to setup):
-  install, update, doctor, status, migrate, rollback, my-changes, uninstall
+  install, reinstall, update, doctor, status, migrate, rollback, my-changes, uninstall
   config, info, backup, logs, setup
 
 Other:
@@ -203,13 +203,32 @@ check_qs_abi() {
         mismatch_msg="$(echo "$qs_output" | grep -iE "built against Qt|Qt.*mismatch|incompatible Qt" | head -1)"
     fi
 
-    # Secondary: compare compile-time Qt (from binary strings) vs runtime Qt (from lib symlink)
+    # Secondary: compare compile-time Qt (from binary strings) vs runtime Qt (from lib symlink).
+    # Cache the result keyed on binary mtimes to avoid re-running `strings` on every start.
     if ! $mismatch_detected && command -v strings >/dev/null 2>&1; then
+        local abi_cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/inir"
+        local abi_cache_file="$abi_cache_dir/abi-check"
+        local qs_mtime qt_mtime abi_cache_key
+        qs_mtime="$(stat -c %Y "$qs_bin" 2>/dev/null || echo 0)"
+        local qt_lib_path=""
+        if [[ -e /usr/lib/libQt6Core.so.6 ]]; then
+            qt_lib_path="/usr/lib/libQt6Core.so.6"
+        elif [[ -e /usr/lib64/libQt6Core.so.6 ]]; then
+            qt_lib_path="/usr/lib64/libQt6Core.so.6"
+        fi
+        qt_mtime="$(stat -c %Y "$(readlink -f "$qt_lib_path" 2>/dev/null || echo "$qt_lib_path")" 2>/dev/null || echo 0)"
+        abi_cache_key="${qs_mtime}:${qt_mtime}"
+
+        if [[ -f "$abi_cache_file" ]] && [[ "$(<"$abi_cache_file")" == "$abi_cache_key" ]]; then
+            # Cached pass — same binaries as last successful check
+            return 0
+        fi
+
         local buildtime_qt=""
         local runtime_qt=""
         buildtime_qt="$(strings "$qs_bin" 2>/dev/null | grep -P '^6\.\d+\.\d+$' | head -1 || true)"
-        if [[ -L /usr/lib/libQt6Core.so.6 ]]; then
-            runtime_qt="$(readlink -f /usr/lib/libQt6Core.so.6 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+$' || true)"
+        if [[ -n "$qt_lib_path" ]]; then
+            runtime_qt="$(readlink -f "$qt_lib_path" 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+$' || true)"
         fi
         if [[ -z "$runtime_qt" ]] && command -v pkg-config >/dev/null 2>&1; then
             runtime_qt="$(pkg-config --modversion Qt6Core 2>/dev/null || true)"
@@ -221,6 +240,12 @@ check_qs_abi() {
                 mismatch_detected=true
                 mismatch_msg="Quickshell built against Qt $buildtime_qt but system has Qt $runtime_qt"
             fi
+        fi
+
+        # Cache successful result so next start skips the expensive strings scan
+        if ! $mismatch_detected; then
+            mkdir -p "$abi_cache_dir" 2>/dev/null || true
+            printf '%s' "$abi_cache_key" > "$abi_cache_file" 2>/dev/null || true
         fi
     fi
 
@@ -369,6 +394,52 @@ apply_shell_scale() {
     export QT_SCALE_FACTOR=1
 }
 
+wait_for_wayland_socket() {
+    # Block until a Wayland compositor socket appears in XDG_RUNTIME_DIR.
+    # At session boot, systemd may start inir.service before the compositor
+    # (Niri/Hyprland) has created its socket.  Without WAYLAND_DISPLAY, Qt
+    # falls back to XCB and crashes (SIGABRT — no X11 server on Wayland-only).
+    # Polling here is cheaper than crash-restart loops and gives instant start
+    # the moment the socket appears.
+    [[ -n "${WAYLAND_DISPLAY:-}" ]] && return 0
+
+    local runtime_dir="/run/user/$(id -u)"
+    local max_polls=50  # 50 × 0.2s = 10 seconds max
+    local i=0
+
+    while (( i < max_polls )); do
+        local candidate
+        for candidate in "$runtime_dir"/wayland-[0-9]*; do
+            if [[ -S "$candidate" ]]; then
+                export WAYLAND_DISPLAY="$(basename "$candidate")"
+                return 0
+            fi
+        done
+        sleep 0.2
+        (( i++ )) || true
+    done
+
+    echo "Warning: No Wayland socket found after ~10s — Qt may crash" >&2
+    return 1
+}
+
+apply_hot_reload_policy_for_dir() {
+    local dir="$1"
+
+    if [[ -n "${INIR_DISABLE_HOT_RELOAD+x}" || -z "$dir" ]]; then
+        return
+    fi
+
+    # Developer checkouts keep .git; deployed runtime payloads do not.
+    # Disable file watching for deployed payloads to reduce startup overhead,
+    # while preserving hot reload when running directly from a git checkout.
+    if [[ -e "$dir/.git" ]]; then
+        return
+    fi
+
+    export INIR_DISABLE_HOT_RELOAD=1
+}
+
 apply_qt_runtime_env() {
     # Ensure WAYLAND_DISPLAY is set — required for Qt to select the wayland
     # platform backend.  When systemd starts inir.service at boot, the
@@ -445,10 +516,13 @@ resolve_config_dir() {
     # Prefer the path of an already-running instance to avoid path-identity
     # mismatches where the launcher would target a different path than the
     # running shell (e.g. dev repo vs setup-installed symlink).
-    local running
-    if running="$(detect_running_instance_dir)"; then
-        config_dir="$(canonicalize_path "$running")"
-        return
+    # Skip this probe during session boot (no running instance, saves a qs subprocess).
+    if [[ "${_skip_running_detect:-}" != true ]]; then
+        local running
+        if running="$(detect_running_instance_dir)"; then
+            config_dir="$(canonicalize_path "$running")"
+            return
+        fi
     fi
 
     local candidate
@@ -611,6 +685,7 @@ start_background() {
         return 0
     fi
 
+    apply_hot_reload_policy_for_dir "$dir"
     nohup "$qs_bin" -n -d -p "$dir" >/dev/null 2>&1 &
 }
 
@@ -1518,6 +1593,7 @@ case "$command_name" in
     run)
         require_qs
         foreground=true
+        _session_boot=false
         while [[ $# -gt 0 ]]; do
             case "$1" in
                 -c|--config)
@@ -1528,8 +1604,13 @@ case "$command_name" in
                     foreground=false
                     shift
                     ;;
-                --foreground|--session)
+                --foreground)
                     foreground=true
+                    shift
+                    ;;
+                --session)
+                    foreground=true
+                    _session_boot=true
                     shift
                     ;;
                 -h|--help)
@@ -1542,7 +1623,25 @@ case "$command_name" in
                     ;;
             esac
         done
+
+        if [[ "$_session_boot" == true ]]; then
+            # ── Session boot fast path ──
+            # The service unit pre-seeds QT_SCALE_FACTOR and QT_LOGGING_RULES, so
+            # apply_shell_scale / apply_qt_logging_rules are no-ops here.
+            # Skip: ABI check, version sync, instance detection, service-active guard.
+            # Systemd manages lifecycle (Restart=on-failure) and I/O priority.
+            _skip_running_detect=true
+            resolve_config_dir
+            apply_hot_reload_policy_for_dir "$config_dir"
+            wait_for_wayland_socket       # block until compositor socket exists
+            apply_qt_runtime_env          # WAYLAND_DISPLAY + platformtheme fallback
+            ensure_systemd_graphical_env & # export env to systemd for other services
+            exec "$qs_bin" -n -p "$config_dir"
+        fi
+
+        # ── Normal run path (manual invocation) ──
         resolve_config_dir
+        apply_hot_reload_policy_for_dir "$config_dir"
         apply_shell_scale
         apply_qt_runtime_env
         apply_qt_logging_rules
@@ -1875,7 +1974,7 @@ case "$command_name" in
     service)
         run_service_command "$@"
         ;;
-    doctor|migrate|status|update|rollback|my-changes|uninstall|config|info|backup|logs)
+    doctor|migrate|status|update|reinstall|rollback|my-changes|uninstall|config|info|backup|logs)
         while [[ $# -gt 0 ]]; do
             case "$1" in
                 -c|--config)
