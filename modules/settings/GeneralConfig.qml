@@ -762,6 +762,95 @@ ContentPage {
                         text: Translation.tr("Maximum number of notifications to display on the lock screen")
                     }
                 }
+            }
+
+            ContentSubsection {
+                visible: Config.options?.lock?.notifications?.enable ?? false
+                title: Translation.tr("Notification position")
+                tooltip: Translation.tr("Where notifications appear on the lock screen. Auto uses center for Material and right for Waffle.")
+
+                ConfigSelectionArray {
+                    currentValue: Config.options?.lock?.notifications?.position ?? "auto"
+                    options: [
+                        { displayName: Translation.tr("Auto"), value: "auto" },
+                        { displayName: Translation.tr("Center"), value: "center" },
+                        { displayName: Translation.tr("Left"), value: "left" },
+                        { displayName: Translation.tr("Right"), value: "right" }
+                    ]
+                    onSelected: (newValue) => Config.setNestedValue("lock.notifications.position", newValue)
+                }
+            }
+
+            ContentSubsection {
+                title: Translation.tr("Clock style")
+                tooltip: Translation.tr("Visual style for the lock screen clock")
+
+                ConfigSelectionArray {
+                    currentValue: Config.options?.lock?.clock?.style ?? "default"
+                    options: [
+                        { displayName: Translation.tr("Default"), value: "default" },
+                        { displayName: Translation.tr("Minimal"), value: "minimal" },
+                        { displayName: Translation.tr("Analog"), value: "analog" }
+                    ]
+                    onSelected: (newValue) => Config.setNestedValue("lock.clock.style", newValue)
+                }
+            }
+
+            ContentSubsection {
+                title: Translation.tr("Clock position")
+                tooltip: Translation.tr("Where the clock appears on the lock screen")
+
+                ConfigSelectionArray {
+                    currentValue: Config.options?.lock?.clock?.position ?? "center"
+                    options: [
+                        { displayName: Translation.tr("Center"), value: "center" },
+                        { displayName: Translation.tr("Top Left"), value: "topLeft" },
+                        { displayName: Translation.tr("Bottom Left"), value: "bottomLeft" }
+                    ]
+                    onSelected: (newValue) => Config.setNestedValue("lock.clock.position", newValue)
+                }
+            }
+
+            ContentSubsection {
+                title: Translation.tr("Extras")
+
+                SettingsSwitch {
+                    buttonIcon: "info"
+                    text: Translation.tr('Show status indicators')
+                    checked: Config.options?.lock?.status?.enable ?? true
+                    onCheckedChanged: {
+                        Config.setNestedValue("lock.status.enable", checked);
+                    }
+                    StyledToolTip {
+                        text: Translation.tr("Show WiFi, Bluetooth, volume and battery indicators on the lock screen")
+                    }
+                }
+
+                SettingsSwitch {
+                    buttonIcon: "brightness_6"
+                    text: Translation.tr('Dim wallpaper')
+                    checked: Config.options?.lock?.dim?.enable ?? false
+                    onCheckedChanged: {
+                        Config.setNestedValue("lock.dim.enable", checked);
+                    }
+                    StyledToolTip {
+                        text: Translation.tr("Apply a dark overlay to the wallpaper for better contrast on the lock screen")
+                    }
+                }
+
+                ConfigSpinBox {
+                    visible: Config.options?.lock?.dim?.enable ?? false
+                    text: Translation.tr("Dim amount")
+                    icon: "opacity"
+                    value: Math.round((Config.options?.lock?.dim?.opacity ?? 0.3) * 100)
+                    from: 10
+                    to: 80
+                    stepSize: 5
+                    onValueChanged: Config.setNestedValue("lock.dim.opacity", value / 100)
+                    StyledToolTip {
+                        text: Translation.tr("How much to dim the wallpaper (percentage)")
+                    }
+                }
 
                 SettingsSwitch {
                     buttonIcon: "center_focus_weak"
