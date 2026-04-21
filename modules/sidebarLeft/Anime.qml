@@ -227,6 +227,7 @@ Item {
 
             MaterialPlaceholderMessage {
                 id: placeholderItem
+                anchors.fill: parent
                 z: 2
                 shown: root.responses.length === 0
                 icon: "bookmark_heart"
@@ -248,10 +249,11 @@ Item {
                     bottom: parent.bottom
                     bottomMargin: 20 + (root.pullLoading ? 0 : Math.max(0, (root.normalizedPullDistance - 0.5) * 50))
                     Behavior on bottomMargin {
+                        enabled: Appearance.animationsEnabled
                         NumberAnimation {
-                            duration: 200
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
+                            duration: Appearance.animation.elementMoveFast.duration
+                            easing.type: Appearance.animation.elementMoveFast.type
+                            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
                         }
                     }
                 }
@@ -352,6 +354,7 @@ Item {
             clip: true
 
             Behavior on implicitHeight {
+                enabled: Appearance.animationsEnabled
                 animation: NumberAnimation { duration: Appearance.animation.elementMove.duration; easing.type: Appearance.animation.elementMove.type; easing.bezierCurve: Appearance.animation.elementMove.bezierCurve }
             }
 

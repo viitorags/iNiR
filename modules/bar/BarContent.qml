@@ -357,7 +357,7 @@ Item { // Bar content region
             LeftSidebarButton { // Left sidebar button
                 visible: Config.options?.bar?.modules?.leftSidebarButton ?? true
                 Layout.alignment: Qt.AlignVCenter
-                colBackground: barLeftSideMouseArea.hovered
+                colBackground: buttonHovered
                     ? (Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface : Appearance.colors.colLayer1Hover)
                     : "transparent"
             }
@@ -577,7 +577,7 @@ Item { // Bar content region
 
                 buttonRadius: Appearance.rounding.full
 
-                colBackground: barRightSideMouseArea.hovered
+                colBackground: buttonHovered
                     ? (Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface : Appearance.colors.colLayer1Hover)
                     : "transparent"
                 colBackgroundHover: Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface : Appearance.colors.colLayer1Hover
@@ -641,6 +641,7 @@ Item { // Bar content region
                         implicitHeight: reveal ? notificationUnreadCount.implicitHeight : 0
                         implicitWidth: reveal ? notificationUnreadCount.implicitWidth : 0
                         Behavior on Layout.rightMargin {
+                            enabled: Appearance.animationsEnabled
                             animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                         }
                         NotificationUnreadCount {

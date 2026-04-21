@@ -176,8 +176,22 @@ case "${SKIP_QUICKSHELL}" in
     fi
 
     if [[ -f "${XDG_CONFIG_HOME}/systemd/user/inir.service" ]]; then
-      systemctl --user enable inir.service >/dev/null 2>&1 || true
-      log_success "User inir.service enabled"
+      # Wire to compositor-specific wants (not graphical-session.target) so inir
+      # only starts under the correct compositor.  Uses the same detection as
+      # 'inir service enable'.
+      local _comp_target
+      if systemctl --user cat niri.service &>/dev/null; then
+        _comp_target="niri.service"
+      elif systemctl --user cat 'wayland-wm@Hyprland.service' &>/dev/null; then
+        _comp_target="wayland-wm@Hyprland.service"
+      else
+        _comp_target="graphical-session.target"
+      fi
+      local _wants_dir="${XDG_CONFIG_HOME}/systemd/user/${_comp_target}.wants"
+      mkdir -p "$_wants_dir"
+      ln -sf "${XDG_CONFIG_HOME}/systemd/user/inir.service" "$_wants_dir/inir.service"
+      systemctl --user daemon-reload >/dev/null 2>&1 || true
+      log_success "User inir.service enabled (wired to ${_comp_target})"
     fi
 
     if [[ -f "${REPO_ROOT}/assets/icons/desktop-symbolic.svg" ]]; then
@@ -313,8 +327,8 @@ fi
 if command -v sddm &>/dev/null; then
   if [[ "${INSTALL_FIRSTRUN}" == true ]]; then
     if [[ "${ask}" == "true" ]]; then
-      tui_info "Optional: install ii-pixel-sddm login theme (matches iNiR lockscreen)."
-      if tui_confirm "Install ii-pixel-sddm now?" "no"; then
+      tui_info "Recommended: install ii-pixel-sddm login theme (matches iNiR lockscreen)."
+      if tui_confirm "Install ii-pixel-sddm now?" "yes"; then
         extras_install_sddm_theme "yes"
       else
         log_info "Skipping ii-pixel-sddm setup"

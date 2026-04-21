@@ -308,6 +308,7 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                 opacity: messageListView.atYBeginning ? 0 : 1
                 visible: opacity > 0
                 Behavior on opacity {
+                    enabled: Appearance.animationsEnabled
                     animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                 }
             }
@@ -401,6 +402,7 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
             }
 
             MaterialPlaceholderMessage {
+                anchors.fill: parent
                 z: 2
                 shown: Ai.messageIDs.length === 0
                 icon: "neurology"
@@ -516,6 +518,7 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
             clip: true
 
             Behavior on implicitHeight {
+                enabled: Appearance.animationsEnabled
                 animation: NumberAnimation { duration: Appearance.animation.elementMove.duration; easing.type: Appearance.animation.elementMove.type; easing.bezierCurve: Appearance.animation.elementMove.bezierCurve }
             }
 

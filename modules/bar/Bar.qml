@@ -73,8 +73,13 @@ Scope {
                     Appearance.sizes.baseBarHeight + ((((Config.options?.bar?.cornerStyle ?? 0) === 1) || ((Config.options?.bar?.cornerStyle ?? 0) === 3)) ? (Appearance.sizes.hyprlandGapsOut * 2) : 0)
                 WlrLayershell.namespace: "quickshell:bar"
                 implicitHeight: Appearance.sizes.barHeight + Appearance.rounding.screenRounding
+                // Explicit zero-size item prevents ambiguous null input region during
+                // surface map/unmap transitions. Region { item: null } can be interpreted
+                // as "full surface accepts input" by the compositor, causing an invisible
+                // input-blocking area at the top of the screen.
+                Item { id: emptyMask; width: 0; height: 0 }
                 mask: Region {
-                    item: GameMode.shouldHidePanels ? null : hoverMaskRegion
+                    item: GameMode.shouldHidePanels ? emptyMask : hoverMaskRegion
                 }
                 color: "transparent"
 
@@ -123,9 +128,11 @@ Scope {
                             rightMargin: ((Config.options?.interactions?.deadPixelWorkaround?.enable ?? false) && barRoot.anchors.right) * -1
                         }
                         Behavior on anchors.topMargin {
+                            enabled: Appearance.animationsEnabled
                             animation: NumberAnimation { duration: Appearance.animation.elementMoveEnter.duration; easing.type: Appearance.animation.elementMoveEnter.type; easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve }
                         }
                         Behavior on anchors.bottomMargin {
+                            enabled: Appearance.animationsEnabled
                             animation: NumberAnimation { duration: Appearance.animation.elementMoveEnter.duration; easing.type: Appearance.animation.elementMoveEnter.type; easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve }
                         }
 

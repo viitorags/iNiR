@@ -81,6 +81,7 @@ Scope {
                 visible: opacity > 0.001
 
                 Behavior on opacity {
+                    enabled: Appearance.animationsEnabled
                     animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                 }
             }
@@ -246,6 +247,7 @@ Scope {
                 spacing: -8
 
                 Behavior on scale {
+                    enabled: Appearance.animationsEnabled
                     animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                 }
 
@@ -291,7 +293,7 @@ Scope {
                     anchors.horizontalCenter: parent.horizontalCenter
                     readonly property bool dashboardMode: Config.options?.overview?.dashboard?.enable ?? false
                     active: GlobalStates.overviewOpen && !dashboardMode && (Config.options?.overview?.enable ?? true)
-                    visible: active
+                    visible: active && (root.searchingText == "")
                     sourceComponent: CompositorService.isNiri ? niriComponent : hyprComponent
                 }
 

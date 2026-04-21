@@ -30,6 +30,7 @@ import qs.modules.sidebarRight.quickToggles
 import qs.modules.sidebarRight.quickToggles.classicStyle
 import qs.modules.sidebarRight.bluetoothDevices
 import qs.modules.sidebarRight.nightLight
+import qs.modules.sidebarRight.hotspot
 import qs.modules.sidebarRight.volumeMixer
 import qs.modules.sidebarRight.wifiNetworks
 import qs.modules.sidebarLeft.widgets
@@ -56,6 +57,7 @@ Item {
     property bool showAudioInputDialog: false
     property bool showBluetoothDialog: false
     property bool showEventsDialog: false
+    property bool showHotspotDialog: false
     property bool showNightLightDialog: false
     property bool showWifiDialog: false
     property bool editMode: false
@@ -477,7 +479,7 @@ Item {
                     opacity: chipMA.containsMouse ? 0.9 : 0.5
                     Behavior on opacity {
                         enabled: Appearance.animationsEnabled
-                        NumberAnimation { duration: 120 }
+                        NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                     }
                 }
             }
@@ -526,6 +528,7 @@ Item {
                 root.showAudioOutputDialog = false
                 root.showAudioInputDialog  = false
                 root.showNightLightDialog  = false
+                root.showHotspotDialog     = false
                 root.eventsDialogEditEvent = null
             }
         }
@@ -737,12 +740,13 @@ Item {
                     visible: root.activeSection >= 0 && root.activeSection < root.sections.length
 
                     Behavior on y {
+                        enabled: Appearance.animationsEnabled
                         NumberAnimation {
                             duration: Appearance.animation.elementMoveFast.duration * 1.5
                             easing.type: Easing.OutCubic
                         }
                     }
-                    Behavior on color { ColorAnimation { duration: Appearance.animation.elementMoveFast.duration } }
+                    Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration } }
                 }
 
                 // ── Sliding active pill on left edge ──
@@ -759,6 +763,7 @@ Item {
                     visible: navIndicator.visible
 
                     Behavior on y {
+                        enabled: Appearance.animationsEnabled
                         NumberAnimation {
                             duration: Appearance.animation.elementMoveFast.duration * 1.5
                             easing.type: Easing.OutCubic
@@ -828,7 +833,7 @@ Item {
                                     : bg.inirEverywhere ? ColorUtils.transparentize(Appearance.inir.colBorder, 0.34)
                                     : bg.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.74)
                                     : ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.68)
-                                Behavior on color { ColorAnimation { duration: Appearance.animation.elementMoveFast.duration } }
+                                Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration } }
 
                                 MaterialSymbol {
                                     anchors.centerIn: parent
@@ -843,7 +848,7 @@ Item {
                                         : (bg.inirEverywhere  ? Appearance.inir.colTextSecondary
                                          : bg.angelEverywhere ? Appearance.angel.colTextSecondary
                                          : Appearance.colors.colOnLayer1)
-                                    Behavior on color { ColorAnimation { duration: Appearance.animation.elementMoveFast.duration } }
+                                    Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration } }
                                 }
 
                                 // ── Notification badge ──────────
@@ -878,6 +883,7 @@ Item {
                                     // Subtle entrance animation
                                     scale: visible ? 1.0 : 0.0
                                     Behavior on scale {
+                                        enabled: Appearance.animationsEnabled
                                         NumberAnimation {
                                             duration: Appearance.animation.elementMoveFast.duration
                                             easing.type: Easing.OutBack
@@ -962,7 +968,7 @@ Item {
                                     : bg.inirEverywhere ? ColorUtils.transparentize(Appearance.inir.colBorder, 0.36)
                                     : bg.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.75)
                                     : ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.70)
-                                Behavior on color { ColorAnimation { duration: Appearance.animation.elementMoveFast.duration } }
+                                Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration } }
 
                                 MaterialSymbol {
                                     anchors.centerIn: parent
@@ -1018,7 +1024,7 @@ Item {
                                 : bg.inirEverywhere ? ColorUtils.transparentize(Appearance.inir.colBorder, 0.36)
                                 : bg.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.75)
                                 : ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.70)
-                            Behavior on color { ColorAnimation { duration: Appearance.animation.elementMoveFast.duration } }
+                            Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration } }
 
                             MaterialSymbol {
                                 anchors.centerIn: parent
@@ -1070,6 +1076,7 @@ Item {
                         opacity: isCurrent ? 1 : 0
                         visible: opacity > 0
                         Behavior on opacity {
+                            enabled: Appearance.animationsEnabled
                             NumberAnimation {
                                 duration: Appearance.animation.elementMoveFast.duration
                                 easing.type: Easing.OutCubic
@@ -1278,6 +1285,7 @@ Item {
                                             function onOpenAudioInputDialog()  { root.showAudioInputDialog  = true }
                                             function onOpenBluetoothDialog()   { root.showBluetoothDialog   = true }
                                             function onOpenNightLightDialog()  { root.showNightLightDialog  = true }
+                                            function onOpenHotspotDialog()     { root.showHotspotDialog     = true }
                                             function onOpenWifiDialog()        { root.showWifiDialog        = true }
                                         }
                                     }
@@ -1294,6 +1302,7 @@ Item {
                                             function onOpenAudioInputDialog()  { root.showAudioInputDialog  = true }
                                             function onOpenBluetoothDialog()   { root.showBluetoothDialog   = true }
                                             function onOpenNightLightDialog()  { root.showNightLightDialog  = true }
+                                            function onOpenHotspotDialog()     { root.showHotspotDialog     = true }
                                             function onOpenWifiDialog()        { root.showWifiDialog        = true }
                                         }
                                     }
@@ -1423,6 +1432,10 @@ Item {
     ToggleDialog {
         shownPropertyString: "showNightLightDialog"
         dialog: NightLightDialog {}
+    }
+    ToggleDialog {
+        shownPropertyString: "showHotspotDialog"
+        dialog: HotspotDialog {}
     }
     ToggleDialog {
         shownPropertyString: "showWifiDialog"
@@ -1904,7 +1917,7 @@ Item {
             scale: qaBtnMA.containsPress ? 0.94 : 1.0
             Behavior on scale {
                 enabled: Appearance.animationsEnabled
-                NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
+                NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
             }
             Behavior on color {
                 enabled: Appearance.animationsEnabled
@@ -1927,7 +1940,7 @@ Item {
 
                     Behavior on color {
                         enabled: Appearance.animationsEnabled
-                        ColorAnimation { duration: 180 }
+                        ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                     }
 
                     MaterialSymbol {

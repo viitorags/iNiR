@@ -727,7 +727,10 @@ ContentPage {
                         { displayName: Translation.tr("Slide"), value: "slide" },
                         { displayName: Translation.tr("Fade"), value: "fade" },
                         { displayName: Translation.tr("Pop"), value: "pop" },
-                        { displayName: Translation.tr("Reveal"), value: "reveal" }
+                        { displayName: Translation.tr("Reveal"), value: "reveal" },
+                        { displayName: Translation.tr("Swing"), value: "swing" },
+                        { displayName: Translation.tr("Drop"), value: "drop" },
+                        { displayName: Translation.tr("Elastic"), value: "elastic" }
                     ]
                     model: animOptions
                     textRole: "displayName"
@@ -878,6 +881,46 @@ ContentPage {
                 //         text: Translation.tr("Embed web apps like Discord, YouTube Music and more in the sidebar (requires quickshell-webengine)")
                 //     }
                 // }
+            }
+
+            ContentSubsection {
+                title: Translation.tr("YT Music")
+                tooltip: Translation.tr("Control how next-track notifications behave")
+                visible: Config.options.sidebar?.ytmusic?.enable ?? false
+
+                SettingsSwitch {
+                    buttonIcon: "music_note"
+                    text: Translation.tr("Up Next notifications")
+                    checked: Config.options.sidebar?.ytmusic?.upNextNotifications ?? true
+                    onCheckedChanged: Config.setNestedValue("sidebar.ytmusic.upNextNotifications", checked)
+                    StyledToolTip {
+                        text: Translation.tr("Show a desktop notification with the upcoming track when playback auto-advances")
+                    }
+                }
+
+                SettingsSwitch {
+                    buttonIcon: "sports_esports"
+                    text: Translation.tr("Mute while fullscreen or GameMode")
+                    enabled: Config.options.sidebar?.ytmusic?.upNextNotifications ?? true
+                    checked: Config.options.sidebar?.ytmusic?.suppressUpNextInFullscreen ?? true
+                    onCheckedChanged: Config.setNestedValue("sidebar.ytmusic.suppressUpNextInFullscreen", checked)
+                    StyledToolTip {
+                        text: Translation.tr("Suppress Up Next notifications when a fullscreen app is active or GameMode is enabled")
+                    }
+                }
+
+                ConfigSelectionArray {
+                    options: [
+                        { displayName: Translation.tr("Best"), icon: "high_quality", value: "best" },
+                        { displayName: Translation.tr("Medium (≤128 kbps)"), icon: "graphic_eq", value: "medium" },
+                        { displayName: Translation.tr("Low"), icon: "data_saver_on", value: "low" }
+                    ]
+                    currentValue: Config.options.sidebar?.ytmusic?.audioQuality ?? "best"
+                    onSelected: (newValue) => Config.setNestedValue("sidebar.ytmusic.audioQuality", newValue)
+                    StyledToolTip {
+                        text: Translation.tr("Audio quality for playback — lower quality uses less bandwidth")
+                    }
+                }
             }
 
             ContentSubsection {
@@ -1605,7 +1648,7 @@ ContentPage {
 
                                     Behavior on opacity {
                                         enabled: Appearance.animationsEnabled
-                                        NumberAnimation { duration: 150 }
+                                        NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                                     }
 
                                     contentItem: MaterialSymbol {

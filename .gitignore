@@ -31,6 +31,7 @@ session-*.md
 .kilocode/
 .kiro/
 .omc/
+.lcm/
 .opencode/
 openspec    
 opencode.json
@@ -63,6 +64,8 @@ opencode_themegen
 system24_themegen
 zed_themegen
 !scripts/colors/system24_themegen/
+!scripts/colors/zed_themegen/
+!scripts/colors/zed_themegen/main.go
 
 # ── Python ────────────────────────────────────────────────────
 __pycache__/
@@ -124,6 +127,11 @@ Thumbs.db
 glob
 sys
 *.ps
+
+# ── Wiki / MkDocs (WIP, not shipped yet) ─────────────────────
+wiki/
+mkdocs.yml
+site/
 
 # ── Stale paths (prevent accidental commits) ─────────────────
 /src/

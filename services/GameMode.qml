@@ -10,12 +10,11 @@ import qs.services
 /**
  * GameMode service - detects fullscreen windows and disables effects for performance.
  * 
- * Activates automatically when:
- * - autoDetect is enabled AND
- * - The focused window covers the full output (fullscreen)
- * 
- * Can also be toggled manually via toggle()/activate()/deactivate()
- * Manual state persists to file.
+ * Two activation modes:
+ * - Manual: user toggle via toggle()/activate()/deactivate(). Persists to file.
+ * - Auto-detect: activates when focused window is fullscreen, deactivates
+ *   immediately when leaving fullscreen. Applies the same performance
+ *   optimizations as manual mode (no panel/background hiding).
  */
 Singleton {
     id: root
@@ -31,16 +30,14 @@ Singleton {
     readonly property bool autoActivated: _autoActive
 
     // True when panels should hide (slide-out + mask null + exclusiveZone 0).
-    // Only when auto-detected AND the focused window is still fullscreen.
-    // When user opens Niri overview (Super+TAB), focused window changes → panels return.
-    // Manual GameMode never hides panels — it only applies performance optimizations.
-    readonly property bool shouldHidePanels: _autoActive && _focusedIsFullscreen
+    // Always false — auto-detect applies the same effects as manual mode
+    // (performance optimizations only, no panel/background hiding).
+    readonly property bool shouldHidePanels: false
     
     // When autoDetect is disabled, immediately clear auto state
     onAutoDetectChanged: {
         if (!autoDetect) {
             _autoActive = false
-            _fullscreenCount = 0
             root._log("[GameMode] autoDetect disabled, clearing auto state")
         } else {
             // Re-check when enabled
@@ -79,11 +76,8 @@ Singleton {
 
     // External process control (optional)
     readonly property bool disableDiscoverOverlay: Config.options?.gameMode?.disableDiscoverOverlay ?? true
+    readonly property bool suppressNotifications: Config.options?.gameMode?.suppressNotifications ?? true
     readonly property string _discoverOverlayServiceName: "discover-overlay.service"
-
-    // Hysteresis: require multiple consecutive checks to change auto state
-    property int _fullscreenCount: 0
-    readonly property int _hysteresisThreshold: 2
 
     // State file path
     readonly property string _stateFile: Quickshell.env("HOME") + "/.local/state/quickshell/user/gamemode_active"
@@ -127,13 +121,31 @@ Singleton {
         stateReader.reload()
     }
 
-    // Check if a window is fullscreen using niri's native is_fullscreen flag.
-    // The old size-based heuristic (60px margin) caused false positives on maximized
-    // windows with small gaps, triggering GameMode and all its side effects unexpectedly.
+    // Check if a window is fullscreen.
+    // Niri 25.11+ doesn't expose is_fullscreen on windows.
+    // We detect fullscreen by comparing window_size to the output's logical
+    // resolution (via workspace → output mapping). A small tolerance (2px)
+    // accounts for sub-pixel rounding differences.
     function isWindowFullscreen(window) {
         if (!window) return false
         if (!CompositorService.isNiri) return false
-        return window.is_fullscreen === true
+
+        // If niri ever adds is_fullscreen back, prefer it
+        if (window.is_fullscreen === true) return true
+
+        // Fallback: compare window size to output logical size
+        const winSize = window.layout?.window_size
+        if (!winSize || winSize.length < 2) return false
+
+        const ws = NiriService.workspaces[window.workspace_id]
+        if (!ws) return false
+
+        const output = NiriService.outputs[ws.output]
+        if (!output?.logical) return false
+
+        const tolerance = 2
+        return Math.abs(winSize[0] - output.logical.width) <= tolerance
+            && Math.abs(winSize[1] - output.logical.height) <= tolerance
     }
     
     // Check if ANY window across all workspaces is fullscreen
@@ -151,7 +163,7 @@ Singleton {
     // Debounce timer for fullscreen checks
     Timer {
         id: checkDebounce
-        interval: 300  // Faster response
+        interval: 300
         onTriggered: root._doCheckFullscreen()
     }
 
@@ -163,7 +175,6 @@ Singleton {
     function _doCheckFullscreen() {
         if (!CompositorService.isNiri) {
             _autoActive = false
-            _fullscreenCount = 0
             _focusedIsFullscreen = false
             hasAnyFullscreenWindow = false
             return
@@ -172,30 +183,28 @@ Singleton {
         // Always update hasAnyFullscreenWindow (for toast suppression)
         hasAnyFullscreenWindow = checkAnyFullscreenWindow()
 
-        const focusedWindow = NiriService.activeWindow
-        const isFullscreen = isWindowFullscreen(focusedWindow)
+        // Find focused window from the current windows array, not activeWindow.
+        // activeWindow is only refreshed on focus-change events, so it's stale
+        // when a window changes fullscreen state without changing focus
+        // (e.g. pressing F11 on the already-focused window).
+        const windows = NiriService.windows
+        const focusedWindow = (Array.isArray(windows) && windows.find(w => w.is_focused))
+            || NiriService.activeWindow
 
-        // Always track focused window state (drives shouldHidePanels reactively)
+        // Track focused window state
+        const isFullscreen = isWindowFullscreen(focusedWindow)
         _focusedIsFullscreen = isFullscreen
 
         if (!autoDetect) {
             _autoActive = false
-            _fullscreenCount = 0
             return
         }
         
-        // Hysteresis: require consistent state before changing
-        if (isFullscreen) {
-            _fullscreenCount = Math.min(_fullscreenCount + 1, _hysteresisThreshold + 1)
-        } else {
-            _fullscreenCount = Math.max(_fullscreenCount - 1, 0)
-        }
-        
-        const wasActive = _autoActive
-        const shouldBeActive = _fullscreenCount >= _hysteresisThreshold
-        
-        if (shouldBeActive !== wasActive) {
-            _autoActive = shouldBeActive
+        // Auto-detect: activate when focused window is fullscreen,
+        // deactivate immediately when it's not. Same behavior as manual
+        // mode but triggered by fullscreen detection.
+        if (isFullscreen !== _autoActive) {
+            _autoActive = isFullscreen
             root._log("[GameMode] Auto-detect:", _autoActive ? "fullscreen detected" : "no fullscreen")
         }
     }
@@ -203,7 +212,7 @@ Singleton {
     // State persistence - read
     FileView {
         id: stateReader
-        path: Qt.resolvedUrl(root._stateFile)
+        path: root._stateFile
 
         onLoaded: {
             const content = stateReader.text()
@@ -242,10 +251,10 @@ Singleton {
         }
 
         function onWindowsChanged() {
-            // Only update hasAnyFullscreenWindow if not already checking
-            if (!checkDebounce.running) {
-                root.hasAnyFullscreenWindow = root.checkAnyFullscreenWindow()
-            }
+            // A window property changed (incl. is_fullscreen). Trigger full
+            // auto-detection — not just hasAnyFullscreenWindow — so we catch
+            // the focused window going fullscreen without a focus change.
+            root.checkFullscreen()
         }
     }
 

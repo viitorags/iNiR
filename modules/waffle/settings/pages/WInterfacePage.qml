@@ -224,12 +224,12 @@ WSettingsPage {
     
     WSettingsCard {
         title: Translation.tr("Display scaling")
-        icon: "desktop"
+        icon: "screenshot"
 
         WSettingsSpinBox {
             id: scaleSpinBox
             label: Translation.tr("UI scale")
-            icon: "add"
+            icon: "screenshot"
             description: Translation.tr("Takes effect immediately")
             suffix: "%"
             from: 50; to: 200; stepSize: 5
@@ -251,11 +251,11 @@ WSettingsPage {
 
     WSettingsCard {
         title: Translation.tr("Display")
-        icon: "desktop"
+        icon: "screenshot"
         
         WSettingsDropdown {
             label: Translation.tr("Fake rounded corners")
-            icon: "desktop"
+            icon: "screenshot"
             description: Translation.tr("Add rounded corners to flat screens")
             currentValue: Config.options?.appearance?.fakeScreenRounding ?? 0
             options: [
@@ -269,6 +269,7 @@ WSettingsPage {
 
     WSettingsSection {
         title: Translation.tr("Notifications & Alerts")
+        icon: "alert"
     }
 
     WSettingsCard {
@@ -277,7 +278,7 @@ WSettingsPage {
         
         WSettingsSpinBox {
             label: Translation.tr("Normal timeout")
-            icon: "alert"
+            icon: "arrow-clockwise"
             description: Translation.tr("How long normal notifications stay visible")
             suffix: "ms"
             from: 1000; to: 30000; stepSize: 1000
@@ -296,7 +297,7 @@ WSettingsPage {
         
         WSettingsSpinBox {
             label: Translation.tr("Critical timeout")
-            icon: "alert"
+            icon: "alert-filled"
             description: Translation.tr("0 = never auto-dismiss")
             suffix: "ms"
             from: 0; to: 30000; stepSize: 1000
@@ -314,7 +315,7 @@ WSettingsPage {
         
         WSettingsDropdown {
             label: Translation.tr("Popup position")
-            icon: "desktop"
+            icon: "panel-left-expand"
             currentValue: Config.options?.notifications?.position ?? "bottomRight"
             options: [
                 { value: "topLeft", displayName: Translation.tr("Top Left") },
@@ -327,7 +328,7 @@ WSettingsPage {
         
         WSettingsSwitch {
             label: Translation.tr("Do Not Disturb")
-            icon: "alert-off"
+            icon: "weather-moon"
             description: Translation.tr("Silence all notifications")
             checked: Config.options?.notifications?.silent ?? false
             onCheckedChanged: Config.setNestedValue("notifications.silent", checked)
@@ -336,11 +337,11 @@ WSettingsPage {
     
     WSettingsCard {
         title: Translation.tr("On-Screen Display")
-        icon: "speaker-2-filled"
+        icon: "pulse"
         
         WSettingsSpinBox {
             label: Translation.tr("OSD timeout")
-            icon: "speaker-2-filled"
+            icon: "arrow-clockwise"
             description: Translation.tr("How long volume/brightness OSD stays visible")
             suffix: "ms"
             from: 500; to: 5000; stepSize: 250
@@ -351,6 +352,7 @@ WSettingsPage {
     
     WSettingsSection {
         title: Translation.tr("Lock Screen")
+        icon: "lock-closed"
     }
 
     WSettingsCard {
@@ -368,7 +370,7 @@ WSettingsPage {
         WSettingsSpinBox {
             visible: Config.options?.lock?.blur?.enable ?? true
             label: Translation.tr("Blur radius")
-            icon: "eye"
+            icon: "eyedropper"
             from: 0; to: 200; stepSize: 10
             value: Config.options?.lock?.blur?.radius ?? 100
             onValueChanged: Config.setNestedValue("lock.blur.radius", value)
@@ -376,7 +378,7 @@ WSettingsPage {
         
         WSettingsSwitch {
             label: Translation.tr("Center clock")
-            icon: "arrow-clockwise"
+            icon: "panel-left-contract"
             checked: Config.options?.lock?.centerClock ?? true
             onCheckedChanged: Config.setNestedValue("lock.centerClock", checked)
         }
@@ -387,10 +389,107 @@ WSettingsPage {
             checked: Config.options?.lock?.showLockedText ?? true
             onCheckedChanged: Config.setNestedValue("lock.showLockedText", checked)
         }
+
+        WSettingsSwitch {
+            label: Translation.tr("Show notifications")
+            icon: "alert"
+            description: Translation.tr("Display recent notifications on the lock screen")
+            checked: Config.options?.lock?.notifications?.enable ?? false
+            onCheckedChanged: Config.setNestedValue("lock.notifications.enable", checked)
+        }
+
+        WSettingsSwitch {
+            visible: Config.options?.lock?.notifications?.enable ?? false
+            label: Translation.tr("Show notification body")
+            icon: "eye"
+            description: Translation.tr("Display message content. Disable for privacy.")
+            checked: Config.options?.lock?.notifications?.showBody ?? true
+            onCheckedChanged: Config.setNestedValue("lock.notifications.showBody", checked)
+        }
+
+        WSettingsSpinBox {
+            visible: Config.options?.lock?.notifications?.enable ?? false
+            label: Translation.tr("Max notifications shown")
+            icon: "list"
+            from: 1; to: 10; stepSize: 1
+            value: Config.options?.lock?.notifications?.maxCount ?? 3
+            onValueChanged: Config.setNestedValue("lock.notifications.maxCount", value)
+        }
+
+        WSettingsDropdown {
+            visible: Config.options?.lock?.notifications?.enable ?? false
+            label: Translation.tr("Notification position")
+            icon: "panel-left-expand"
+            description: Translation.tr("Where notifications appear on the lock screen")
+            currentValue: Config.options?.lock?.notifications?.position ?? "auto"
+            options: [
+                { value: "auto", displayName: Translation.tr("Auto") },
+                { value: "center", displayName: Translation.tr("Center") },
+                { value: "left", displayName: Translation.tr("Left") },
+                { value: "right", displayName: Translation.tr("Right") }
+            ]
+            onSelected: newValue => Config.setNestedValue("lock.notifications.position", newValue)
+        }
+
+        WSettingsDropdown {
+            label: Translation.tr("Clock style")
+            icon: "arrow-clockwise"
+            description: Translation.tr("Visual style for the lock screen clock")
+            currentValue: Config.options?.lock?.clock?.style ?? "default"
+            options: [
+                { value: "default", displayName: Translation.tr("Default") },
+                { value: "minimal", displayName: Translation.tr("Minimal") },
+                { value: "analog", displayName: Translation.tr("Analog") }
+            ]
+            onSelected: newValue => Config.setNestedValue("lock.clock.style", newValue)
+        }
+
+        WSettingsDropdown {
+            label: Translation.tr("Clock position")
+            icon: "pin"
+            description: Translation.tr("Where the clock appears on the lock screen")
+            currentValue: Config.options?.lock?.clock?.position ?? "center"
+            options: [
+                { value: "center", displayName: Translation.tr("Center") },
+                { value: "topLeft", displayName: Translation.tr("Top Left") },
+                { value: "bottomLeft", displayName: Translation.tr("Bottom Left") }
+            ]
+            onSelected: newValue => Config.setNestedValue("lock.clock.position", newValue)
+        }
+
+        WSettingsSwitch {
+            label: Translation.tr("Show status indicators")
+            icon: "info"
+            description: Translation.tr("Show WiFi, Bluetooth, volume and battery on the lock screen")
+            checked: Config.options?.lock?.status?.enable ?? true
+            onCheckedChanged: Config.setNestedValue("lock.status.enable", checked)
+        }
+
+        WSettingsSwitch {
+            label: Translation.tr("Dim wallpaper")
+            icon: "weather-sunny-low"
+            description: Translation.tr("Apply a dark overlay to the wallpaper for better contrast")
+            checked: Config.options?.lock?.dim?.enable ?? false
+            onCheckedChanged: Config.setNestedValue("lock.dim.enable", checked)
+        }
+
+        WSettingsSlider {
+            visible: Config.options?.lock?.dim?.enable ?? false
+            label: Translation.tr("Dim amount")
+            icon: "brightness-high"
+            description: Translation.tr("How much to dim the wallpaper")
+            from: 10
+            to: 80
+            stepSize: 5
+            value: Math.round((Config.options?.lock?.dim?.opacity ?? 0.3) * 100)
+            onMoved: Config.setNestedValue("lock.dim.opacity", value / 100)
+            suffix: "%"
+        }
     }
 
     WSettingsSection {
         title: Translation.tr("Screen Recording")
+        icon: "record"
     }
 
     WSettingsCard {
@@ -421,7 +520,7 @@ WSettingsPage {
 
         WSettingsDropdown {
             label: Translation.tr("Quality preset")
-            icon: "settings"
+            icon: "options"
             description: Translation.tr("Trade off file size and output quality")
             currentValue: Config.options?.screenRecord?.qualityPreset ?? "balanced"
             options: root.recordingQualityPresetOptions
@@ -480,7 +579,7 @@ WSettingsPage {
         WSettingsDropdown {
             visible: root.customRecordingPreset
             label: Translation.tr("Video bitrate")
-            icon: "record"
+            icon: "pulse"
             currentValue: Config.options?.screenRecord?.videoBitrateKbps ?? 12000
             options: root.recordingVideoBitrateOptions
             onSelected: newValue => root.setRecordingConfig("screenRecord.videoBitrateKbps", newValue)
@@ -489,7 +588,7 @@ WSettingsPage {
         WSettingsDropdown {
             visible: root.customRecordingPreset
             label: Translation.tr("Audio codec")
-            icon: "speaker-2-filled"
+            icon: "mic"
             currentValue: Config.options?.screenRecord?.audioCodec ?? "aac"
             options: root.availableAudioCodecOptions()
             onSelected: newValue => root.setRecordingConfig("screenRecord.audioCodec", newValue)
@@ -498,7 +597,7 @@ WSettingsPage {
         WSettingsDropdown {
             visible: root.customRecordingPreset
             label: Translation.tr("Audio bitrate")
-            icon: "speaker-2-filled"
+            icon: "mic"
             currentValue: Config.options?.screenRecord?.audioBitrateKbps ?? 192
             options: root.recordingAudioBitrateOptions
             onSelected: newValue => root.setRecordingConfig("screenRecord.audioBitrateKbps", newValue)
@@ -507,7 +606,7 @@ WSettingsPage {
         WSettingsDropdown {
             visible: root.customRecordingPreset
             label: Translation.tr("Audio source")
-            icon: "speaker-2-filled"
+            icon: "speaker"
             description: Translation.tr("Default output monitor captures desktop audio")
             currentValue: Config.options?.screenRecord?.audioSource ?? ""
             options: root.availableAudioSourceOptions()
@@ -517,7 +616,7 @@ WSettingsPage {
         WSettingsDropdown {
             visible: root.customRecordingPreset
             label: Translation.tr("Audio backend")
-            icon: "speaker-2-filled"
+            icon: "speaker-settings"
             currentValue: Config.options?.screenRecord?.audioBackend ?? ""
             options: root.recordingAudioBackendOptions
             onSelected: newValue => root.setRecordingConfig("screenRecord.audioBackend", newValue)
@@ -526,7 +625,7 @@ WSettingsPage {
         WSettingsDropdown {
             visible: root.customRecordingPreset && root.gpuRecordingAvailable
             label: Translation.tr("Render device")
-            icon: "desktop"
+            icon: "device-eq"
             currentValue: Config.options?.screenRecord?.hardwareDevice ?? "/dev/dri/renderD128"
             options: root.availableHardwareDeviceOptions()
             onSelected: newValue => root.setRecordingConfig("screenRecord.hardwareDevice", newValue)
