@@ -1,8 +1,13 @@
 [Unit]
 Description=iNiR shell
+# Lifecycle: stop/restart inir when the graphical session stops/restarts.
 PartOf=graphical-session.target
+# Ordering: wait for the compositor to signal readiness (niri is Type=notify,
+# so graphical-session.target is only reached once the Wayland socket exists).
 After=graphical-session.target
-Wants=graphical-session.target
+# Guard: fail immediately if the graphical session isn't active or starting.
+# inir is a session consumer, not a producer — it must never pull in the target.
+Requisite=graphical-session.target
 # Rate-limit restarts: max 3 attempts in 30 seconds, then stop trying.
 # These MUST live in [Unit], not [Service] — systemd ignores them elsewhere.
 StartLimitIntervalSec=30
@@ -26,11 +31,11 @@ SuccessExitStatus=143
 KillMode=process
 KillSignal=SIGTERM
 
-# on-abnormal: restart on signals (SIGSEGV, SIGABRT) but NOT on non-zero
-# exit codes.  This respects Quickshell's own crash-loop detector — when
-# QS decides it has crashed too many times and exits cleanly, systemd
-# won't override that decision by restarting again.
-Restart=on-abnormal
+# on-failure: restart on both signals (SIGSEGV, SIGABRT) AND non-zero exit
+# codes (QML errors, unhandled exceptions).  Clean SIGTERM shutdown is already
+# excluded via SuccessExitStatus=143.  The rate limiter (3 in 30s) prevents
+# infinite crash loops — after 3 rapid failures systemd gives up.
+Restart=on-failure
 RestartSec=5
 TimeoutStopSec=15
 
@@ -49,5 +54,6 @@ ExecStopPost=-/usr/bin/inir cleanup-orphans
 # during cold-boot I/O contention (portals, tray apps, etc.)
 IOSchedulingPriority=2
 
-[Install]
-WantedBy=graphical-session.target
+# No [Install] section — wiring is managed by 'inir service enable' which
+# creates a compositor-specific wants link (e.g. niri.service.wants/) so
+# inir only starts under the correct compositor, not under KDE/GNOME/etc.
